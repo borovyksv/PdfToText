@@ -88,37 +88,7 @@ public class PDFManager {
         }
 
 
-//        try (PDDocument document = PDDocument.loadNonSeq(file, null)) {
-//            List<PDPage> pdPages = document.getDocumentCatalog().getAllPages();
-//
-//
-//            int page = 0;
-//            for (PDPage pdPage : pdPages) {
-//                ++page;
-//
-//                if (page < 4) continue;
-//                if (page > 4) break;
-//
-//                System.out.println("page: " + page + " loaded");
-//                BufferedImage bim = pdPage.convertToImage(BufferedImage.TYPE_INT_RGB, IMAGE_DPI);
-//                System.out.println("page: " + page + " converted to Image");
-//
-//
-//                try (PrintWriter out = new PrintWriter(resultFolder + "Page-" + page + ".txt")) {
-//                    String result = tessInst.doOCR(bim);
-//                    String filteredResult = textFilter(result);
-//                    System.out.println("page: " + page + " converted to Text");
-//                    out.println(filteredResult);
-//
-//                } catch (TesseractException e) {
-//                    System.err.println(e.getMessage());
-//                }
-//
-//            }
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+
     }
 
     private String textFilter(String result) {
