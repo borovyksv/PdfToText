@@ -66,7 +66,7 @@ public class PDFManager {
             List<PDDocument> pages = splitter.split(document);
 
             //Saving each page as an individual document
-            pages.forEach(page -> {
+            pages.stream().limit(2).forEach(page -> {
                 try {
                     int pageNumber = counter.incrementAndGet();
 
@@ -139,8 +139,8 @@ public class PDFManager {
     }
 
     private String textFilter(String input) {
-        String group = "[_\\-/\\.\\\\\\\"\\'@~]";
-        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+\\u0020%1$s+", group);
+        String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
+        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
         //deleting garbage
         input = input.replaceAll(pattern, "");
         //filtering short lines
