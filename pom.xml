@@ -39,24 +39,25 @@
             <version>3.2.1</version>
         </dependency>
 
-
         <dependency>
             <groupId>org.bytedeco.javacpp-presets</groupId>
             <artifactId>tesseract</artifactId>
             <version>3.03-rc1-0.11</version>
         </dependency>
-        <!--<dependency>-->
-            <!--<groupId>com.briksoftware</groupId>-->
-            <!--<artifactId>JBIG2-Image-Decoder</artifactId>-->
-            <!--<version>2.0</version>-->
-            <!--<type>pom</type>-->
-        <!--</dependency>-->
+
         <!-- https://mvnrepository.com/artifact/com.itextpdf/itextpdf -->
         <dependency>
             <groupId>com.itextpdf</groupId>
             <artifactId>itextpdf</artifactId>
-            <version>5.0.6</version>
+            <version>5.5.10</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.itextpdf/itext-xtra -->
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>itext-xtra</artifactId>
+            <version>5.5.10</version>
+        </dependency>
+
 
     </dependencies>
 
