@@ -42,5 +42,9 @@
     <orderEntry type="library" name="Maven: org.bytedeco.javacpp-presets:leptonica:windows-x86_64:1.71-0.11" level="project" />
     <orderEntry type="library" name="Maven: org.bytedeco:javacpp:0.11" level="project" />
     <orderEntry type="library" name="Maven: org.bytedeco.javacpp-presets:tesseract:windows-x86_64:3.03-rc1-0.11" level="project" />
+    <orderEntry type="library" name="Maven: com.itextpdf:itextpdf:5.0.6" level="project" />
+    <orderEntry type="library" name="Maven: org.bouncycastle:bcmail-jdk14:1.38" level="project" />
+    <orderEntry type="library" name="Maven: org.bouncycastle:bcprov-jdk14:1.38" level="project" />
+    <orderEntry type="library" name="Maven: org.bouncycastle:bctsp-jdk14:1.38" level="project" />
   </component>
 </module>
