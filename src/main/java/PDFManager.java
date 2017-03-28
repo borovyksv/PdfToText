@@ -13,6 +13,8 @@ import org.apache.pdfbox.util.Splitter;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +28,7 @@ public class PDFManager {
     private static final Logger LOGGER = Logger.getLogger(PDFManager.class.getName());
 
     private final int IMAGE_DPI = 600;
-    private final float IMAGE_COMPRESSION = 0.4f;
+    private final float IMAGE_COMPRESSION = 0.8f;
     private final String IMAGE_FORMAT = "jpg";
 
 
@@ -62,17 +64,20 @@ public class PDFManager {
             //Instantiating Splitter class
             Splitter splitter = new Splitter();
             //initializing Tesseract
-            Tesseract tessInst = new Tesseract();
-            tessInst.setDatapath(".");
+//            Tesseract tessInst = new Tesseract();
+//            tessInst.setDatapath(".");
             //initializing page counter
             AtomicInteger counter = new AtomicInteger(0);
 
             //splitting the pages of a PDF document
             List<PDDocument> pages = splitter.split(document);
 
+            Instant start = Instant.now();
             //Saving each page as an individual document
-            pages.forEach(page -> {
+            pages.stream().limit(100).forEach(page -> {
                 try {
+                    Tesseract tessInst = new Tesseract();
+                    tessInst.setDatapath(".");
                     int pageNumber = counter.incrementAndGet();
 
                     //saving PDF
@@ -84,10 +89,16 @@ public class PDFManager {
                     //saving TXT
                     saveText(tessInst, pageNumber, bufferedImage);
 
-                } catch (IOException | COSVisitorException e) {
+                } catch (IOException e) {
+                    LOGGER.log(Level.SEVERE, "Exception occur", e);
+                }
+                catch (COSVisitorException e) {
                     LOGGER.log(Level.SEVERE, "Exception occur", e);
                 }
             });
+            Instant end = Instant.now();
+            LOGGER.log(Level.INFO, (Duration.between(start, end)).toString());
+
 
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
@@ -120,8 +131,8 @@ public class PDFManager {
         File file = new File(resultFolderIMG + pageNumber + "." + IMAGE_FORMAT);
         FileOutputStream output = new FileOutputStream(file);
 
-        Image tmp = bim.getScaledInstance(600, 780, Image.SCALE_SMOOTH);
-        BufferedImage dimg = new BufferedImage(600, 780, BufferedImage.TYPE_INT_RGB);
+        Image tmp = bim.getScaledInstance(1440, 1872, Image.SCALE_SMOOTH);
+        BufferedImage dimg = new BufferedImage(1440, 1872, BufferedImage.TYPE_INT_RGB);
 
         Graphics2D g2d = dimg.createGraphics();
         g2d.drawImage(tmp, 0, 0, null);
