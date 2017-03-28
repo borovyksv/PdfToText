@@ -10,6 +10,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.util.ImageIOUtil;
 import org.apache.pdfbox.util.Splitter;
 
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.Arrays;
@@ -24,7 +25,11 @@ public class PDFManager {
 
     private static final Logger LOGGER = Logger.getLogger(PDFManager.class.getName());
 
-    private int IMAGE_DPI = 600;
+    private final int IMAGE_DPI = 600;
+    private final float IMAGE_COMPRESSION = 0.4f;
+    private final String IMAGE_FORMAT = "jpg";
+
+
     private String pdfFilename;
     private File file;
     private String resultFolder;
@@ -51,7 +56,7 @@ public class PDFManager {
 
 
         //load document
-        try (PDDocument document = PDDocument.loadNonSeq(file, null)) {
+        try (PDDocument document = PDDocument.load(file)) {
             LOGGER.log(Level.INFO, String.format("Document %s loaded", document));
 
             //Instantiating Splitter class
@@ -66,14 +71,16 @@ public class PDFManager {
             List<PDDocument> pages = splitter.split(document);
 
             //Saving each page as an individual document
-            pages.stream().limit(2).forEach(page -> {
+            pages.forEach(page -> {
                 try {
                     int pageNumber = counter.incrementAndGet();
 
                     //saving PDF
                     savePage(page, pageNumber);
+                    //getting Image
+                    BufferedImage bufferedImage = getImage(page);
                     //saving Image
-                    BufferedImage bufferedImage = saveImageAndGet(page, pageNumber);
+                    saveImage(pageNumber, bufferedImage);
                     //saving TXT
                     saveText(tessInst, pageNumber, bufferedImage);
 
@@ -87,6 +94,12 @@ public class PDFManager {
         }
 
 
+    }
+
+    private BufferedImage getImage(PDDocument page) throws IOException {
+
+        PDPage currentPage = (PDPage) page.getDocumentCatalog().getAllPages().get(0);
+        return currentPage.convertToImage(BufferedImage.TYPE_INT_RGB, IMAGE_DPI);
     }
 
     private void saveText(Tesseract tessInst, int pageNumber, BufferedImage bufferedImage) {
@@ -103,16 +116,21 @@ public class PDFManager {
         }
     }
 
-    private BufferedImage saveImageAndGet(PDDocument pd, int pageNumber) throws IOException {
+    private void saveImage(int pageNumber, BufferedImage bim) throws IOException {
+        File file = new File(resultFolderIMG + pageNumber + "." + IMAGE_FORMAT);
+        FileOutputStream output = new FileOutputStream(file);
 
-        String imageFormat = ".png";
+        Image tmp = bim.getScaledInstance(600, 780, Image.SCALE_SMOOTH);
+        BufferedImage dimg = new BufferedImage(600, 780, BufferedImage.TYPE_INT_RGB);
 
-        PDPage currentPage = (PDPage) pd.getDocumentCatalog().getAllPages().get(0);
-        BufferedImage bim = currentPage.convertToImage(BufferedImage.TYPE_INT_RGB, IMAGE_DPI);
-        ImageIOUtil.writeImage(bim, resultFolderIMG + pageNumber + imageFormat, IMAGE_DPI);
-        LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, imageFormat));
+        Graphics2D g2d = dimg.createGraphics();
+        g2d.drawImage(tmp, 0, 0, null);
+        g2d.dispose();
 
-        return bim;
+
+        ImageIOUtil.writeImage(dimg, IMAGE_FORMAT, output, IMAGE_DPI, IMAGE_COMPRESSION);
+        LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
+
     }
 
     private void savePage(PDDocument pd, int pageNumber) throws IOException, COSVisitorException {
@@ -128,7 +146,9 @@ public class PDFManager {
             } catch (DocumentException e) {
                 LOGGER.log(Level.SEVERE, "Exception occur", e);
             } finally {
-                if (reader != null) reader.close();
+                if (reader != null) {
+                    reader.close();
+                }
             }
 
         } else {
@@ -222,7 +242,7 @@ public class PDFManager {
 //                        System.out.println(page.substring(0, page.length() - 4));
                         bookmarkWriter.print(page + " </td>");
                         bookmarkWriter.print("<td><a href=\"PDF\\" + page + ".pdf\">PDF</a>&ensp;");
-                        bookmarkWriter.print("<a href=\"IMG\\" + page + ".png\">IMG</a>&ensp;");
+                        bookmarkWriter.print("<a href=\"IMG\\" + page + "." +IMAGE_FORMAT+"\">IMG</a>&ensp;");
                         bookmarkWriter.print("<a href=\"TXT\\" + page + ".txt\">TXT</a><br></td></tr>");
                         break;
                     case "Kids":
