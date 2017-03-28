@@ -81,7 +81,7 @@ public class PDFManager {
                 } catch (TesseractException e) {
                     System.err.println(e.getMessage());
                 }
-                break;
+
             }
         } catch (IOException | COSVisitorException e) {
             e.printStackTrace();
