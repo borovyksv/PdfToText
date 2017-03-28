@@ -12,11 +12,13 @@ import org.apache.pdfbox.util.Splitter;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class PDFManager {
 
@@ -90,7 +92,9 @@ public class PDFManager {
     private void saveText(Tesseract tessInst, int pageNumber, BufferedImage bufferedImage) {
         try (PrintWriter out = new PrintWriter(resultFolderTXT + pageNumber + ".txt")) {
             String result = tessInst.doOCR(bufferedImage);
+            LOGGER.log(Level.INFO, String.format("%d.txt converted", pageNumber));
             String filteredResult = textFilter(result);
+            LOGGER.log(Level.INFO, String.format("%d.txt filtered", pageNumber));
             out.println(filteredResult);
             LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
 
@@ -134,10 +138,16 @@ public class PDFManager {
 
     }
 
-    private String textFilter(String result) {
-
-        String pattern = "[^\\u0000-\\u007F\\u00b0\\n\\r\\t]|([^\\w\\d\\s]{2,}?)|(\\b.\\s.\\s.\\b)|\\s{2,}?|\\b\\D.?\\u0020..?\\u0020";
-        return result.replaceAll(pattern, "");
+    private String textFilter(String input) {
+        String group = "[_\\-/\\.\\\\\\\"\\'@~]";
+        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+\\u0020%1$s+", group);
+        //deleting garbage
+        input = input.replaceAll(pattern, "");
+        //filtering short lines
+        input = Arrays.stream(input.split("\n"))
+                .filter(s -> s.length()>5)
+                .collect(Collectors.joining("\n"));
+        return input;
     }
 
     public void saveBookmarks() {
