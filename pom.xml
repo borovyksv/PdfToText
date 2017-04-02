@@ -59,6 +59,14 @@
         </dependency>
 
 
+        <!-- https://mvnrepository.com/artifact/com.kenai.nbpwr/com-sun-pdfview -->
+        <dependency>
+            <groupId>com.kenai.nbpwr</groupId>
+            <artifactId>com-sun-pdfview</artifactId>
+            <version>1.0.5-201003191900</version>
+        </dependency>
+
+
     </dependencies>
 
 </project>

@@ -1,3 +1,5 @@
+package util;
+
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.SimpleBookmark;
@@ -8,11 +10,12 @@ import org.apache.pdfbox.exceptions.COSVisitorException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.util.ImageIOUtil;
-import org.apache.pdfbox.util.Splitter;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -21,7 +24,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -37,9 +39,8 @@ public class PDFManager {
 
 
     private String pdfFilename;
-    //// TODO: 30.03.2017 replace default values
-    private Integer startPage = 1;
-    private Integer endPage = 10;
+    private Integer startPage;
+    private Integer endPage;
 
     private File file;
     private String resultFolder;
@@ -58,9 +59,9 @@ public class PDFManager {
         this.pdfFilename = pdfFilename;
         this.file = new File(pdfFilename);
         this.resultFolder = file.getParent() + File.separator + file.getName().substring(0, file.getName().length() - 4) + "_parsed" + File.separator;
-        this.resultFolderPDF = resultFolder + File.separator + "PDF" + File.separator;
-        this.resultFolderIMG = resultFolder + File.separator + "IMG" + File.separator;
-        this.resultFolderTXT = resultFolder + File.separator + "TXT" + File.separator;
+        this.resultFolderPDF = resultFolder + "PDF" + File.separator;
+        this.resultFolderIMG = resultFolder + "IMG" + File.separator;
+        this.resultFolderTXT = resultFolder + "TXT" + File.separator;
         new File(resultFolder).mkdir();
         new File(resultFolderPDF).mkdir();
         new File(resultFolderIMG).mkdir();
@@ -71,20 +72,25 @@ public class PDFManager {
     public void convertPDF() {
 
 
-        //load document
-        try (PDDocument document = PDDocument.load(file)) {
-            LOGGER.log(Level.INFO, String.format("Document %s loaded", document));
-
-
-            //initializing page counter
-            AtomicInteger counter = new AtomicInteger(startPage - 1);
-
-            //splitting the pages of a PDF document
-            //// TODO: 30.03.2017 uncomment
-
-
+//        //load document
+//        try (PDDocument document = PDDocument.load(file)) {
+//            LOGGER.log(Level.INFO, String.format("Document %s loaded", document));
+//
+//
+//            //initializing page counter
+//            AtomicInteger counter = new AtomicInteger(startPage - 1);
+//
+////            splitting the pages of a PDF document
+//            Splitter splitter = new Splitter();
+//            //Instantiating Splitter class
+//            List<PDDocument> pages = splitter.split(document);
+//
+//            int numberOfPages = pages.size();
+//
+//
+//
 //            Instant start = Instant.now();
-////            Saving each page as an individual document
+//
 //            pages.parallelStream().forEach(page -> {
 //                try {
 //
@@ -104,140 +110,52 @@ public class PDFManager {
 //
 //                } catch (IOException e) {
 //                    LOGGER.log(Level.SEVERE, "Exception occur", e);
-//                }
-//                catch (COSVisitorException e) {
+//                } catch (COSVisitorException e) {
 //                    LOGGER.log(Level.SEVERE, "Exception occur", e);
 //                }
 //            });
 //            Instant end = Instant.now();
-//            LOGGER.log(Level.INFO, "Parallel "+(Duration.between(start, end)).toString());
-
-//            TimeUnit.MINUTES.sleep(10);
-//
+//            LOGGER.log(Level.INFO, "Parallel saving images DONE" + (Duration.between(start, end)).toString());
 
 
-            for (int i = startPage; i<=endPage; i+=100) {
-                //Instantiating Splitter class
-                Splitter splitter = new Splitter();
-                endPage = document.getNumberOfPages();
-                splitter.setStartPage(i);
-                splitter.setEndPage(i+99);
-                List<PDDocument> pages = splitter.split(document);
+        Instant start = Instant.now();
+//            Saving each page as an individual document
 
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
 
-                Instant start = Instant.now();
+//        System.out.println(resultFolderIMG);
 
-
-                ExecutorService executorService = Executors.newFixedThreadPool(4);
-
-                for (PDDocument page : pages) {
-
-                    executorService.execute(() -> {
-
-                        try {
-                            int pageNumber = counter.incrementAndGet();
-                            Tesseract tessInst = new Tesseract();
-
-                            //todo remove
-//                            if (pageNumber % 50 == 0) {
-//                                LOGGER.log(Level.INFO, "GARBAGE COLLECTOR started");
-//                                System.gc();
-//                            }
-
-                            //saving PDF
-//                            PDFManager.this.savePage(page, pageNumber);
-                            //getting Image
-                            BufferedImage bufferedImage = PDFManager.this.getImage(page);
-                            //saving Image
-                            //                        LOGGER.log(Level.INFO, "Image getted "+pageNumber);
-
-                            PDFManager.this.saveImage(pageNumber, bufferedImage);
-                            //saving TXT
-//                            PDFManager.this.saveText(tessInst, pageNumber, bufferedImage);
-                            bufferedImage.flush();
-
-                        } catch (IOException e) {
-                            LOGGER.log(Level.SEVERE, "Exception occur", e);
-                        }
-//                        catch (COSVisitorException e) {
-//                            e.printStackTrace();
-//                        }
-
-
-
-                        });
-                }
-
-                executorService.shutdown();
-                final boolean done = executorService.awaitTermination(1, TimeUnit.DAYS);
-
-                Instant end = Instant.now();
-                LOGGER.log(Level.INFO, "Executor has finished "+i+" pages in: " + (Duration.between(start, end)).toString());
-
-                LOGGER.log(Level.INFO, "GARBAGE COLLECTOR started in forEach");
-                System.gc();
-
-
-            }
-
-            //////////////////////////////////////////////////////////////////////////////////////////////////////////
-//            splitter = new Splitter();
-//            splitter.setStartPage(endPage / 2 + 1);
-//            splitter.setEndPage(endPage);
-//            pages = splitter.split(document);
-//
-//            start = Instant.now();
-//
-//
-//            executorService = Executors.newFixedThreadPool(4);
-//
-//            for (PDDocument page : pages) {
-//                //  if (counter.get()%200==0) {
-//                //        LOGGER.log(Level.INFO, "GARBAGE COLLECTOR IN FOREACH RUNNED");
-//
-//                //  System.gc();}
-//                executorService.execute(() -> {
-//
-//                    try {
-//                        int pageNumber = counter.incrementAndGet();
-//                        Tesseract tessInst = new Tesseract();
-//                        if (pageNumber % 100 == 0) {
-//                            LOGGER.log(Level.INFO, "GARBAGE COLLECTOR IN Thread runned");
-////
-//                            System.gc();
-//                        }
-//
-//                        //saving PDF
-//                        PDFManager.this.savePage(page, pageNumber);
-//                        //getting Image
-//                        BufferedImage bufferedImage = PDFManager.this.getImage(page);
-//                        //saving Image
-//                        LOGGER.log(Level.INFO, "Image getted " + pageNumber);
-//
-//                        PDFManager.this.saveImage(pageNumber, bufferedImage);
-//                        //saving TXT
-//                        PDFManager.this.saveText(tessInst, pageNumber, bufferedImage);
-//
-//                    } catch (COSVisitorException e) {
-//                        e.printStackTrace();
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
-//                });
-//            }
-//
-//            executorService.shutdown();
-//            final boolean done1 = executorService.awaitTermination(1, TimeUnit.DAYS);
-//
-//            end = Instant.now();
-//            LOGGER.log(Level.INFO, "Executor 2 part " + (Duration.between(start, end)).toString());
-
-
+        try {
+            Files.walk(Paths.get(resultFolderIMG)).filter(Files::isRegularFile).parallel().forEach(file -> {
+                executorService.execute(()->{
+                    saveText(file.toFile());
+                });
+//                System.out.println(file.toFile().getName());
+            });
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Exception occur", e);
+            e.printStackTrace();
+        }
+
+        executorService.shutdown();
+
+        try {
+            executorService.awaitTermination(1, TimeUnit.DAYS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+//        IntStream.range(1, 1041).parallel().forEach(pageNumber -> {
+////            if (pageNumber%100==0) System.gc();
+//            saveText(pageNumber);
+//        });
+
+        Instant end = Instant.now();
+        LOGGER.log(Level.INFO, "Parallel Tesseract saving TXT DONE" + (Duration.between(start, end)).toString());
+
+
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
 
     }
@@ -261,14 +179,36 @@ public class PDFManager {
         return result;
     }
 
-    private void saveText(Tesseract tessInst, int pageNumber, BufferedImage bufferedImage) {
+    private void saveText(int pageNumber) {
         try (PrintWriter out = new PrintWriter(resultFolderTXT + pageNumber + ".txt")) {
-            String result = tessInst.doOCR(bufferedImage);
+
+            Tesseract tessInst = new Tesseract();
+
+            String result = tessInst.doOCR(new File(resultFolderIMG + pageNumber + "." + IMAGE_FORMAT));
 //            LOGGER.log(Level.INFO, String.format("%d.txt converted", pageNumber));
             String filteredResult = textFilter(result);
 //            LOGGER.log(Level.INFO, String.format("%d.txt filtered", pageNumber));
             out.println(filteredResult);
             LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
+
+        } catch (TesseractException | FileNotFoundException e) {
+            LOGGER.log(Level.SEVERE, "Exception occur", e);
+        }
+    }
+    private void saveText(File file) {
+        String targetDirectory = resultFolderTXT + file.getName().substring(0, file.getName().length()-4) + ".txt";
+//        LOGGER.log(Level.INFO, String.format(targetDirectory+" INFOOOOOOO"));
+
+        try (PrintWriter out = new PrintWriter(targetDirectory)) {
+
+            Tesseract tessInst = new Tesseract();
+
+            String result = tessInst.doOCR(file);
+//            LOGGER.log(Level.INFO, String.format("%d.txt converted", pageNumber));
+            String filteredResult = textFilter(result);
+//            LOGGER.log(Level.INFO, String.format("%d.txt filtered", pageNumber));
+            out.println(filteredResult);
+            LOGGER.log(Level.INFO, String.format(targetDirectory+" saved"));
 
         } catch (TesseractException | FileNotFoundException e) {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
