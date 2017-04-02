@@ -36,8 +36,8 @@ public class PDFConverter {
 
 
     private String pdfFilename;
-    private Integer startPage;
-    private Integer endPage;
+//    private Integer startPage;
+//    private Integer endPage;
 
     private File file;
     private String resultFolder;
@@ -60,143 +60,122 @@ public class PDFConverter {
         LOGGER.log(Level.INFO, String.format("PDFmanager for %s file initialized", pdfFilename));
     }
 
-
-    public void saveImagesFromPdf() {
-        try (PDDocument document = PDDocument.load(file)) {
-            AtomicInteger counter = new AtomicInteger(0);
-
-            Splitter splitter = new Splitter();
-
-            List<PDDocument> pages = splitter.split(document);
-
-
-            ExecutorService executorService = Executors.newFixedThreadPool(4);
-
-
-            for (PDDocument page : pages) {
-                if (counter.get() >= 100) break;
-                executorService.execute(() -> {
-
-                    try {
-                        int currentPage = counter.incrementAndGet();
-
-
-                        BufferedImage image = getImage(page);
-                        saveImage(currentPage, image);
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        if (page != null) try {
-                            page.close();
-                        } catch (IOException e) {
-                            LOGGER.log(Level.SEVERE, "Exception occur", e);
-                        }
-                    }
-                });
-            }
-//
-            executorService.shutdown();
-            final boolean done = executorService.awaitTermination(1, TimeUnit.DAYS);
-
-//            pages.parallelStream().forEach(page -> {
-//                try {
-//                    int currentPage = counter.incrementAndGet();
-//
-//
-//                    BufferedImage image = getImage(page);
-//                    saveImage(currentPage, image);
-//
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                } finally {
-//                    if (page != null) try {
-//                        page.close();
-//                    } catch (IOException e) {
-//                        LOGGER.log(Level.SEVERE, "Exception occur", e);
-//                    }
-//                }
-//            });
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Exception occur", e);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     public void savePagesFromPdf() {
-        try (PDDocument document = PDDocument.load(file)) {
-            AtomicInteger counter = new AtomicInteger(0);
+        PdfReader reader = null;
+        try {
+            reader = new PdfReader(pdfFilename);
+            SmartPdfSplitter splitter = new SmartPdfSplitter(reader);
+            int pageNumber = 1;
+            while (splitter.hasMorePages()) {
+                splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
+                LOGGER.log(Level.INFO, String.format("%d.pdf with ITEXT saved", pageNumber));
 
-            Splitter splitter = new Splitter();
-
-            List<PDDocument> pages = splitter.split(document);
-
-            pages.parallelStream().forEach(page -> {
-                try {
-                    int currentPage = counter.incrementAndGet();
-                    savePage(page, currentPage);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (COSVisitorException e) {
-                    e.printStackTrace();
-                } finally {
-                    if (page != null) try {
-                        page.close();
-                    } catch (IOException e) {
-                        LOGGER.log(Level.SEVERE, "Exception occur", e);
-                    }
-                }
-            });
+                pageNumber++;
+            }
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Exception occur", e);
+            e.printStackTrace();
+        } catch (DocumentException e) {
+            e.printStackTrace();
+        } finally {
+            if (reader != null) {
+                reader.close();
+            }
         }
     }
-
-//    public void savePagesAndImagesFromPdf(){
-//        savePagesAndImagesFromPdf(-1);
-//    }
 
     public void savePagesAndImagesFromPdf() {
+
+        //todo REPLACE
+        savePagesFromPdf();
+
+
+
+        int docPagesSize = 0;
         try (PDDocument document = PDDocument.load(file)) {
-            AtomicInteger counter = new AtomicInteger(0);
-
-            Splitter splitter = new Splitter();
-//            if (endPage>0) splitter.setEndPage(endPage);
-
-            List<PDDocument> pages = splitter.split(document);
-
-            pages.forEach(page -> {
-                try {
-
-                    int currentPage = counter.incrementAndGet();
-
-//                    if (currentPage%50==0) System.gc();
-
-//                    savePage(page, currentPage);
-
-                    BufferedImage image = getImage(page);
-                    LOGGER.log(Level.INFO, String.format("%d page", currentPage));
-
-
-                    saveImage(currentPage, image);
-
-                    saveText(currentPage, image);
-
-                    image.flush();
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    if (page != null) try {
-                        page.close();
-                    } catch (IOException e) {
-                        LOGGER.log(Level.SEVERE, "Exception occur", e);
-                    }
-                }
-            });
+            docPagesSize = document.getDocumentCatalog().getAllPages().size();
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Exception occur", e);
+            e.printStackTrace();
+        }
+        for (int startPage = 1; startPage < docPagesSize; startPage += 100) {
+            //the document might be reloaded every 100 pages for prevent memory leaks
+            try (PDDocument document = PDDocument.load(file)) {
+                int endPage = (startPage + 99) < docPagesSize ? startPage + 99 : docPagesSize;
+
+                AtomicInteger counter = new AtomicInteger(startPage - 1);
+
+                Splitter splitter = new Splitter();
+                splitter.setStartPage(startPage);
+                splitter.setEndPage(endPage);
+
+
+                List<PDDocument> pages = splitter.split(document);
+                LOGGER.log(Level.INFO, "SPLITTING....................." + startPage + " - " + endPage);
+
+                ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+                for (PDDocument page : pages) {
+                    executorService.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+
+                                int currentPage = counter.incrementAndGet();
+
+                                BufferedImage image = getImage(page);
+
+                                saveText(currentPage, image);
+
+                                saveImage(currentPage, image);
+
+                                image.flush();
+
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            } finally {
+
+                                if (page != null) try {
+                                    page.close();
+                                } catch (IOException e) {
+                                    LOGGER.log(Level.SEVERE, "Exception occur", e);
+                                }
+                            }
+                        }
+                    });
+                }
+                executorService.shutdown();
+                executorService.awaitTermination(30, TimeUnit.MINUTES);
+//                pages.parallelStream().forEach(page -> {
+//                    try {
+//
+//                        int currentPage = counter.incrementAndGet();
+//
+//                        savePage(page, currentPage);
+//
+//                        BufferedImage image = getImage(page);
+//
+//                        saveText(currentPage, image);
+//
+//                        saveImage(currentPage, image);
+//
+//                        image.flush();
+//
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    } finally {
+//
+//                        if (page != null) try {
+//                            page.close();
+//                        } catch (IOException e) {
+//                            LOGGER.log(Level.SEVERE, "Exception occur", e);
+//                        }
+//                    }
+//                });
+                System.gc();
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "Exception occur", e);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -247,10 +226,10 @@ public class PDFConverter {
 
         Graphics2D g2d = dimg.createGraphics();
         g2d.drawImage(tmp, 0, 0, null);
-        g2d.dispose();
 
 
         ImageIOUtil.writeImage(dimg, IMAGE_FORMAT, output, IMAGE_DPI, IMAGE_COMPRESSION);
+        g2d.dispose();
         LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
 
     }

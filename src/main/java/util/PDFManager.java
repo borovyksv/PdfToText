@@ -14,16 +14,9 @@ import org.apache.pdfbox.util.ImageIOUtil;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -69,95 +62,13 @@ public class PDFManager {
         LOGGER.log(Level.INFO, String.format("PDFmanager for %s file initialized", pdfFilename));
     }
 
-    public void convertPDF() {
-
-
-//        //load document
-//        try (PDDocument document = PDDocument.load(file)) {
-//            LOGGER.log(Level.INFO, String.format("Document %s loaded", document));
+    public void convertPDF(String filePath) {
+//        PDFConverter converter = new PDFConverter(filePath);
+////        manager.saveBookmarks();
+//        converter.savePagesAndImagesFromPdf(1, 100);
 //
-//
-//            //initializing page counter
-//            AtomicInteger counter = new AtomicInteger(startPage - 1);
-//
-////            splitting the pages of a PDF document
-//            Splitter splitter = new Splitter();
-//            //Instantiating Splitter class
-//            List<PDDocument> pages = splitter.split(document);
-//
-//            int numberOfPages = pages.size();
-//
-//
-//
-//            Instant start = Instant.now();
-//
-//            pages.parallelStream().forEach(page -> {
-//                try {
-//
-//                    int pageNumber = counter.incrementAndGet();
-////                    Tesseract tessInst = tessPool.get(pageNumber % 4);
-//
-//                    Tesseract tessInst = new Tesseract();
-//
-//                    //saving PDF
-//                    savePage(page, pageNumber);
-//                    //getting Image
-//                    BufferedImage bufferedImage = getImage(page);
-//                    //saving Image
-//                    saveImage(pageNumber, bufferedImage);
-//                    //saving TXT
-//                    saveText(tessInst, pageNumber, bufferedImage);
-//
-//                } catch (IOException e) {
-//                    LOGGER.log(Level.SEVERE, "Exception occur", e);
-//                } catch (COSVisitorException e) {
-//                    LOGGER.log(Level.SEVERE, "Exception occur", e);
-//                }
-//            });
-//            Instant end = Instant.now();
-//            LOGGER.log(Level.INFO, "Parallel saving images DONE" + (Duration.between(start, end)).toString());
-
-
-        Instant start = Instant.now();
-//            Saving each page as an individual document
-
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
-
-//        System.out.println(resultFolderIMG);
-
-        try {
-            Files.walk(Paths.get(resultFolderIMG)).filter(Files::isRegularFile).parallel().forEach(file -> {
-                executorService.execute(()->{
-                    saveText(file.toFile());
-                });
-//                System.out.println(file.toFile().getName());
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        executorService.shutdown();
-
-        try {
-            executorService.awaitTermination(1, TimeUnit.DAYS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-//        IntStream.range(1, 1041).parallel().forEach(pageNumber -> {
-////            if (pageNumber%100==0) System.gc();
-//            saveText(pageNumber);
-//        });
-
-        Instant end = Instant.now();
-        LOGGER.log(Level.INFO, "Parallel Tesseract saving TXT DONE" + (Duration.between(start, end)).toString());
-
-
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-
-
+//        converter = new PDFConverter("D:\\pdf\\Acura.pdf");
+//        converter.savePagesAndImagesFromPdf(101, 200);
     }
 
     private BufferedImage getImage(PDDocument page) {
@@ -352,4 +263,96 @@ public class PDFManager {
         });
     }
 
+    {
+//        {
+//
+//
+////        //load document
+////        try (PDDocument document = PDDocument.load(file)) {
+////            LOGGER.log(Level.INFO, String.format("Document %s loaded", document));
+////
+////
+////            //initializing page counter
+////            AtomicInteger counter = new AtomicInteger(startPage - 1);
+////
+//////            splitting the pages of a PDF document
+////            Splitter splitter = new Splitter();
+////            //Instantiating Splitter class
+////            List<PDDocument> pages = splitter.split(document);
+////
+////            int numberOfPages = pages.size();
+////
+////
+////
+////            Instant start = Instant.now();
+////
+////            pages.parallelStream().forEach(page -> {
+////                try {
+////
+////                    int pageNumber = counter.incrementAndGet();
+//////                    Tesseract tessInst = tessPool.get(pageNumber % 4);
+////
+////                    Tesseract tessInst = new Tesseract();
+////
+////                    //saving PDF
+////                    savePage(page, pageNumber);
+////                    //getting Image
+////                    BufferedImage bufferedImage = getImage(page);
+////                    //saving Image
+////                    saveImage(pageNumber, bufferedImage);
+////                    //saving TXT
+////                    saveText(tessInst, pageNumber, bufferedImage);
+////
+////                } catch (IOException e) {
+////                    LOGGER.log(Level.SEVERE, "Exception occur", e);
+////                } catch (COSVisitorException e) {
+////                    LOGGER.log(Level.SEVERE, "Exception occur", e);
+////                }
+////            });
+////            Instant end = Instant.now();
+////            LOGGER.log(Level.INFO, "Parallel saving images DONE" + (Duration.between(start, end)).toString());
+//
+//
+//            Instant start = Instant.now();
+////            Saving each page as an individual document
+//
+//            ExecutorService executorService = Executors.newFixedThreadPool(4);
+//
+////        System.out.println(resultFolderIMG);
+//
+//            try {
+//                Files.walk(Paths.get(resultFolderIMG)).filter(Files::isRegularFile).parallel().forEach(file -> {
+//                    executorService.execute(()->{
+//                        saveText(file.toFile());
+//                    });
+////                System.out.println(file.toFile().getName());
+//                });
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//
+//            executorService.shutdown();
+//
+//            try {
+//                executorService.awaitTermination(1, TimeUnit.DAYS);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//
+////        IntStream.range(1, 1041).parallel().forEach(pageNumber -> {
+//////            if (pageNumber%100==0) System.gc();
+////            saveText(pageNumber);
+////        });
+//
+//            Instant end = Instant.now();
+//            LOGGER.log(Level.INFO, "Parallel Tesseract saving TXT DONE" + (Duration.between(start, end)).toString());
+//
+//
+////        } catch (IOException e) {
+////            e.printStackTrace();
+////        }
+//
+//
+//        }
+    }
 }
