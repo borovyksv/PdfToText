@@ -6,7 +6,6 @@ import com.itextpdf.text.pdf.SimpleBookmark;
 import com.itextpdf.text.pdf.util.SmartPdfSplitter;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
-import org.apache.pdfbox.exceptions.COSVisitorException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.util.ImageIOUtil;
@@ -14,6 +13,7 @@ import org.apache.pdfbox.util.ImageIOUtil;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,19 +21,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
-@SuppressWarnings("all")
 public class PDFConverter {
     private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
 
     private int IMAGE_DPI = 300;
     private float IMAGE_COMPRESSION = 0.7f;
     private String IMAGE_FORMAT = "jpg";
+    private int DIMENSIONS_DIVIDER = IMAGE_DPI/100;
 
 
     private String pdfFilename;
-//    private Integer startPage;
-//    private Integer endPage;
 
     private File file;
     private String resultFolder;
@@ -68,10 +67,8 @@ public class PDFConverter {
 
                 pageNumber++;
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (DocumentException e) {
-            e.printStackTrace();
+        } catch (IOException | DocumentException e) {
+            LOGGER.log(Level.SEVERE, "Exception occur", e);
         } finally {
             if (reader != null) {
                 reader.close();
@@ -82,7 +79,7 @@ public class PDFConverter {
     public void savePagesAndImagesFromPdf() {
 
         //todo REPLACE
-//        savePagesFromPdf();
+        savePagesFromPdf();
 
 
 
@@ -90,80 +87,44 @@ public class PDFConverter {
         try (PDDocument document = PDDocument.load(file)) {
             docPagesSize = document.getDocumentCatalog().getAllPages().size();
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Exception occur", e);
         }
+
         for (int startPage = 1; startPage <=docPagesSize; startPage += 100) {
-            //the document might be reloaded every 100 pages for prevent memory leaks
+
+            // document must be reloaded every 100 pages to prevent memory leaks
             try (PDDocument document = PDDocument.load(file)) {
                 int endPage = (startPage + 99) < docPagesSize ? startPage + 99 : docPagesSize;
 
                 AtomicInteger counter = new AtomicInteger(startPage);
 
-//                Splitter splitter = new Splitter();
-//                splitter.setStartPage(startPage);
-//                splitter.setEndPage(endPage);
-//
-//
-//                List<PDDocument> pages = splitter.split(document);
-                LOGGER.log(Level.INFO, "SPLITTING....................." + startPage + " - " + endPage);
-
                 ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
                 for (int i = startPage; i <=endPage; i++) {
-                    executorService.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
+                    executorService.execute(() -> {
+                        try {
 
-                                int currentPage = counter.getAndIncrement();
+                            int currentPage = counter.getAndIncrement();
 
-                                BufferedImage image = getImage(document, currentPage);
+                            BufferedImage image = getImage(document, currentPage);
 
-                                saveText(currentPage, image);
+                            saveText(currentPage, image);
 
-                                saveImage(currentPage, image);
+                            saveImage(currentPage, image);
 
-                                image.flush();
+                            image.flush();
 
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     });
                 }
                 executorService.shutdown();
                 executorService.awaitTermination(30, TimeUnit.MINUTES);
-//                pages.parallelStream().forEach(page -> {
-//                    try {
-//
-//                        int currentPage = counter.incrementAndGet();
-//
-//                        savePage(page, currentPage);
-//
-//                        BufferedImage image = getImage(page);
-//
-//                        saveText(currentPage, image);
-//
-//                        saveImage(currentPage, image);
-//
-//                        image.flush();
-//
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                    } finally {
-//
-//                        if (page != null) try {
-//                            page.close();
-//                        } catch (IOException e) {
-//                            LOGGER.log(Level.SEVERE, "Exception occur", e);
-//                        }
-//                    }
-//                });
                 System.gc();
-            } catch (IOException e) {
+
+            } catch (IOException | InterruptedException e) {
                 LOGGER.log(Level.SEVERE, "Exception occur", e);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         }
     }
@@ -174,9 +135,7 @@ public class PDFConverter {
 
         try (PrintWriter out = new PrintWriter(resultFolderTXT + pageNumber + ".txt")) {
             String result = tessInst.doOCR(bufferedImage);
-//            LOGGER.log(Level.INFO, String.format("%d.txt converted", pageNumber));
             String filteredResult = textFilter(result);
-//            LOGGER.log(Level.INFO, String.format("%d.txt filtered", pageNumber));
             out.println(filteredResult);
             LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
 
@@ -187,14 +146,15 @@ public class PDFConverter {
 
 
     private String textFilter(String input) {
-//        String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
-//        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
-//        //deleting garbage
-//        input = input.replaceAll(pattern, "");
-//        //filtering short lines
-//        input = Arrays.stream(input.split("\n"))
-//                .filter(s -> s.length() > 5)
-//                .collect(Collectors.joining("\n"));
+        String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
+        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
+        //deleting garbage
+        input = input.replaceAll(pattern, "");
+        input = input.replaceAll(pattern, "");
+        //filtering short lines
+        input = Arrays.stream(input.split("\n"))
+                .filter(s -> s.length() > 6)
+                .collect(Collectors.joining("\n"));
         return input;
     }
 
@@ -210,8 +170,8 @@ public class PDFConverter {
         File file = new File(resultFolderIMG + pageNumber + "." + IMAGE_FORMAT);
         FileOutputStream output = new FileOutputStream(file);
 
-        Image tmp = bim.getScaledInstance(720, 936, Image.SCALE_SMOOTH);
-        BufferedImage dimg = new BufferedImage(720, 936, BufferedImage.TYPE_INT_RGB);
+        Image tmp = bim.getScaledInstance(bim.getWidth()/DIMENSIONS_DIVIDER, bim.getHeight()/DIMENSIONS_DIVIDER, Image.SCALE_SMOOTH);
+        BufferedImage dimg = new BufferedImage(bim.getWidth()/DIMENSIONS_DIVIDER, bim.getHeight()/DIMENSIONS_DIVIDER, BufferedImage.TYPE_INT_RGB);
 
         Graphics2D g2d = dimg.createGraphics();
         g2d.drawImage(tmp, 0, 0, null);
@@ -223,34 +183,6 @@ public class PDFConverter {
 
     }
 
-    private void savePage(PDDocument page, int pageNumber) throws IOException, COSVisitorException {
-        // this if statement used to prevent PDFbox BUG with saving first page of document: result has a huge size
-        if (pageNumber == 1) {
-            PdfReader reader = null;
-            try {
-                reader = new PdfReader(pdfFilename);
-                SmartPdfSplitter splitter = new SmartPdfSplitter(reader);
-                splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
-                LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
-
-            } catch (DocumentException e) {
-                LOGGER.log(Level.SEVERE, "Exception occur", e);
-            } catch (FileNotFoundException e) {
-                LOGGER.log(Level.SEVERE, "Exception occur", e);
-            } catch (IOException e) {
-                LOGGER.log(Level.SEVERE, "Exception occur", e);
-            } finally {
-                if (reader != null) {
-                    reader.close();
-                }
-            }
-
-        } else {
-            page.save(resultFolderPDF + pageNumber + ".pdf");
-            LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
-        }
-
-    }
 
     public void saveBookmarks() {
 
@@ -315,13 +247,10 @@ public class PDFConverter {
             map.entrySet().forEach(entry -> {
                 switch (entry.getKey()) {
                     case "Title":
-//                        System.out.print(indentation + entry.getValue() + ": ");
                         bookmarkWriter.print("<tr><td>" + indentation + entry.getValue() + ": ");
                         break;
                     case "Page":
                         String page = entry.getValue().toString().split(" ")[0];
-//                        page = page.substring(0, page.length() - 4);
-//                        System.out.println(page.substring(0, page.length() - 4));
                         bookmarkWriter.print(page + " </td>");
                         bookmarkWriter.print("<td><a href=\"PDF\\" + page + ".pdf\">PDF</a>&ensp;");
                         bookmarkWriter.print("<a href=\"IMG\\" + page + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");

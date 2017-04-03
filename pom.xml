@@ -39,11 +39,11 @@
             <version>3.2.1</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.bytedeco.javacpp-presets</groupId>
-            <artifactId>tesseract</artifactId>
-            <version>3.03-rc1-0.11</version>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.bytedeco.javacpp-presets</groupId>-->
+            <!--<artifactId>tesseract</artifactId>-->
+            <!--<version>3.03-rc1-0.11</version>-->
+        <!--</dependency>-->
 
         <!-- https://mvnrepository.com/artifact/com.itextpdf/itextpdf -->
         <dependency>
@@ -59,12 +59,12 @@
         </dependency>
 
 
-        <!-- https://mvnrepository.com/artifact/com.kenai.nbpwr/com-sun-pdfview -->
-        <dependency>
-            <groupId>com.kenai.nbpwr</groupId>
-            <artifactId>com-sun-pdfview</artifactId>
-            <version>1.0.5-201003191900</version>
-        </dependency>
+        <!--&lt;!&ndash; https://mvnrepository.com/artifact/com.kenai.nbpwr/com-sun-pdfview &ndash;&gt;-->
+        <!--<dependency>-->
+            <!--<groupId>com.kenai.nbpwr</groupId>-->
+            <!--<artifactId>com-sun-pdfview</artifactId>-->
+            <!--<version>1.0.5-201003191900</version>-->
+        <!--</dependency>-->
 
 
     </dependencies>
