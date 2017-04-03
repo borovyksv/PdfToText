@@ -11,7 +11,7 @@ public class Solution {
         PDFConverter converter = new PDFConverter("D:\\pdf\\Acura.pdf");
 //        manager.saveBookmarks();
 //        converter.savePagesAndImagesFromPdf();
-        converter.saveBookmarks();
+//        converter.saveBookmarks();
         converter.savePagesAndImagesFromPdf();
 
 

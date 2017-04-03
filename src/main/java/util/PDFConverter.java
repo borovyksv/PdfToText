@@ -10,21 +10,17 @@ import org.apache.pdfbox.exceptions.COSVisitorException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.util.ImageIOUtil;
-import org.apache.pdfbox.util.Splitter;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 @SuppressWarnings("all")
 public class PDFConverter {
@@ -86,7 +82,7 @@ public class PDFConverter {
     public void savePagesAndImagesFromPdf() {
 
         //todo REPLACE
-        savePagesFromPdf();
+//        savePagesFromPdf();
 
 
 
@@ -96,32 +92,32 @@ public class PDFConverter {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        for (int startPage = 1; startPage < docPagesSize; startPage += 100) {
+        for (int startPage = 1; startPage <=docPagesSize; startPage += 100) {
             //the document might be reloaded every 100 pages for prevent memory leaks
             try (PDDocument document = PDDocument.load(file)) {
                 int endPage = (startPage + 99) < docPagesSize ? startPage + 99 : docPagesSize;
 
-                AtomicInteger counter = new AtomicInteger(startPage - 1);
+                AtomicInteger counter = new AtomicInteger(startPage);
 
-                Splitter splitter = new Splitter();
-                splitter.setStartPage(startPage);
-                splitter.setEndPage(endPage);
-
-
-                List<PDDocument> pages = splitter.split(document);
+//                Splitter splitter = new Splitter();
+//                splitter.setStartPage(startPage);
+//                splitter.setEndPage(endPage);
+//
+//
+//                List<PDDocument> pages = splitter.split(document);
                 LOGGER.log(Level.INFO, "SPLITTING....................." + startPage + " - " + endPage);
 
                 ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-                for (PDDocument page : pages) {
+                for (int i = startPage; i <=endPage; i++) {
                     executorService.execute(new Runnable() {
                         @Override
                         public void run() {
                             try {
 
-                                int currentPage = counter.incrementAndGet();
+                                int currentPage = counter.getAndIncrement();
 
-                                BufferedImage image = getImage(page);
+                                BufferedImage image = getImage(document, currentPage);
 
                                 saveText(currentPage, image);
 
@@ -131,13 +127,6 @@ public class PDFConverter {
 
                             } catch (Exception e) {
                                 e.printStackTrace();
-                            } finally {
-
-                                if (page != null) try {
-                                    page.close();
-                                } catch (IOException e) {
-                                    LOGGER.log(Level.SEVERE, "Exception occur", e);
-                                }
                             }
                         }
                     });
@@ -198,21 +187,21 @@ public class PDFConverter {
 
 
     private String textFilter(String input) {
-        String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
-        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
-        //deleting garbage
-        input = input.replaceAll(pattern, "");
-        //filtering short lines
-        input = Arrays.stream(input.split("\n"))
-                .filter(s -> s.length() > 5)
-                .collect(Collectors.joining("\n"));
+//        String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
+//        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
+//        //deleting garbage
+//        input = input.replaceAll(pattern, "");
+//        //filtering short lines
+//        input = Arrays.stream(input.split("\n"))
+//                .filter(s -> s.length() > 5)
+//                .collect(Collectors.joining("\n"));
         return input;
     }
 
 
-    private BufferedImage getImage(PDDocument page) throws IOException {
+    private BufferedImage getImage(PDDocument document, int page) throws IOException {
 
-        PDPage currentPage = (PDPage) page.getDocumentCatalog().getAllPages().get(0);
+        PDPage currentPage = (PDPage) document.getDocumentCatalog().getAllPages().get(page-1);
         return currentPage.convertToImage(BufferedImage.TYPE_INT_RGB, IMAGE_DPI);
 
     }
