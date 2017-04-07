@@ -158,9 +158,6 @@ public class PDFConverter {
                 sb.append(s).append("\n");
             }
         }
-//        input = Arrays.stream(input.split("\n"))
-//                .filter(s -> s.length() > 6)
-//                .collect(Collectors.joining("\n"));
         return sb.toString();
     }
 
