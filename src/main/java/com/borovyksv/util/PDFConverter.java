@@ -1,4 +1,4 @@
-package util;
+package com.borovyksv.util;
 
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfReader;
@@ -41,9 +41,9 @@ public class PDFConverter {
     private String resultFolderTXT;
 
 
-    public PDFConverter(String pdfFilename) {
-        this.pdfFilename = pdfFilename;
-        this.file = new File(pdfFilename);
+    public PDFConverter(String fileDirectory) {
+        this.pdfFilename = fileDirectory;
+        this.file = new File(fileDirectory);
         this.resultFolder = file.getParent() + File.separator + file.getName().substring(0, file.getName().length() - 4) + "_parsed" + File.separator;
         this.resultFolderPDF = resultFolder + "PDF" + File.separator;
         this.resultFolderIMG = resultFolder + "IMG" + File.separator;
@@ -52,7 +52,30 @@ public class PDFConverter {
         new File(resultFolderPDF).mkdir();
         new File(resultFolderIMG).mkdir();
         new File(resultFolderTXT).mkdir();
-        LOGGER.log(Level.INFO, String.format("PDFmanager for %s file initialized", pdfFilename));
+        LOGGER.log(Level.INFO, String.format("PDFmanager for %s file initialized", fileDirectory));
+    }
+
+    static private String textFilter(String input) {
+        String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
+        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
+        //delete garbage from whole text
+        input = input.replaceAll(pattern, "");
+        //Filter short lines from garbage
+        StringBuilder sb = new StringBuilder();
+        for (String s : input.split("\n")) {
+            Matcher m = Pattern.compile("[=;:_\\-/\\\\\"'@~!+,\\|\\.1%\\*\\$]").matcher(s);
+            int matches = 0;
+            while (m.find()) matches++;
+            if (s.matches("^\\w{4,}[:\\.,]?$") || (matches < 3 && s.length() > 6) || s.length() > 20) {
+                sb.append(s).append("\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    public void convert() {
+        saveBookmarks();
+        savePagesAndImagesAndTextFromPdf();
     }
 
     public void savePagesFromPdf() {
@@ -63,7 +86,7 @@ public class PDFConverter {
             int pageNumber = 1;
             while (splitter.hasMorePages()) {
                 splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
-                LOGGER.log(Level.INFO, String.format("%d.pdf with ITEXT saved", pageNumber));
+                LOGGER.log(Level.INFO, String.format("%d.pdf with saved", pageNumber));
 
                 pageNumber++;
             }
@@ -76,7 +99,12 @@ public class PDFConverter {
         }
     }
 
-    public void savePagesAndImagesFromPdf() {
+    public void savePagesAndImagesAndTextFromPdf() {
+        savePagesFromPdf();
+        saveImagesAndTextFromPdf();
+    }
+
+    public void saveImagesAndTextFromPdf() {
 
         savePagesFromPdf();
 
@@ -96,7 +124,7 @@ public class PDFConverter {
 
                 AtomicInteger counter = new AtomicInteger(startPage);
 
-                ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+                ExecutorService executorService = Executors.newFixedThreadPool(4);
 
                 for (int i = startPage; i <= endPage; i++) {
                     executorService.execute(() -> {
@@ -127,7 +155,6 @@ public class PDFConverter {
         }
     }
 
-
     private void saveText(int pageNumber, BufferedImage bufferedImage) {
         Tesseract tessInst = new Tesseract();
 
@@ -141,27 +168,6 @@ public class PDFConverter {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
         }
     }
-
-
-    static private String textFilter(String input) {
-        String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
-        String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
-        //delete garbage from whole text
-        input = input.replaceAll(pattern, "");
-        //Filter short lines from garbage
-        StringBuilder sb = new StringBuilder();
-        for (String s : input.split("\n")) {
-            Matcher m = Pattern.compile("[=;:_\\-/\\\\\"'@~!+,\\|\\.1%\\*\\$]").matcher(s);
-            int matches = 0;
-            while (m.find()) matches++;
-            if (s.matches("^\\w{4,}[:\\.,]?$")||(matches<3&&s.length()>6)||s.length()>20){
-                sb.append(s).append("\n");
-            }
-        }
-        return sb.toString();
-    }
-
-
 
     private BufferedImage getImage(PDDocument document, int page) throws IOException {
 
