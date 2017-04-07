@@ -13,7 +13,6 @@ import org.apache.pdfbox.util.ImageIOUtil;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,7 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PDFConverter {
     private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
@@ -29,7 +29,7 @@ public class PDFConverter {
     private int IMAGE_DPI = 300;
     private float IMAGE_COMPRESSION = 0.7f;
     private String IMAGE_FORMAT = "jpg";
-    private int DIMENSIONS_DIVIDER = IMAGE_DPI/100;
+    private int DIMENSIONS_DIVIDER = IMAGE_DPI / 100;
 
 
     private String pdfFilename;
@@ -78,9 +78,7 @@ public class PDFConverter {
 
     public void savePagesAndImagesFromPdf() {
 
-        //todo REPLACE
         savePagesFromPdf();
-
 
 
         int docPagesSize = 0;
@@ -90,7 +88,7 @@ public class PDFConverter {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
         }
 
-        for (int startPage = 1; startPage <=docPagesSize; startPage += 100) {
+        for (int startPage = 1; startPage <= docPagesSize; startPage += 100) {
 
             // document must be reloaded every 100 pages to prevent memory leaks
             try (PDDocument document = PDDocument.load(file)) {
@@ -100,7 +98,7 @@ public class PDFConverter {
 
                 ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-                for (int i = startPage; i <=endPage; i++) {
+                for (int i = startPage; i <= endPage; i++) {
                     executorService.execute(() -> {
                         try {
 
@@ -145,23 +143,32 @@ public class PDFConverter {
     }
 
 
-    private String textFilter(String input) {
+    static private String textFilter(String input) {
         String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
         String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
-        //deleting garbage
+        //delete garbage from whole text
         input = input.replaceAll(pattern, "");
-        input = input.replaceAll(pattern, "");
-        //filtering short lines
-        input = Arrays.stream(input.split("\n"))
-                .filter(s -> s.length() > 6)
-                .collect(Collectors.joining("\n"));
-        return input;
+        //Filter short lines from garbage
+        StringBuilder sb = new StringBuilder();
+        for (String s : input.split("\n")) {
+            Matcher m = Pattern.compile("[=;:_\\-/\\\\\"'@~!+,\\|\\.1%\\*\\$]").matcher(s);
+            int matches = 0;
+            while (m.find()) matches++;
+            if (s.matches("^\\w{4,}[:\\.,]?$")||(matches<3&&s.length()>6)||s.length()>20){
+                sb.append(s).append("\n");
+            }
+        }
+//        input = Arrays.stream(input.split("\n"))
+//                .filter(s -> s.length() > 6)
+//                .collect(Collectors.joining("\n"));
+        return sb.toString();
     }
+
 
 
     private BufferedImage getImage(PDDocument document, int page) throws IOException {
 
-        PDPage currentPage = (PDPage) document.getDocumentCatalog().getAllPages().get(page-1);
+        PDPage currentPage = (PDPage) document.getDocumentCatalog().getAllPages().get(page - 1);
         return currentPage.convertToImage(BufferedImage.TYPE_INT_RGB, IMAGE_DPI);
 
     }
@@ -170,8 +177,8 @@ public class PDFConverter {
         File file = new File(resultFolderIMG + pageNumber + "." + IMAGE_FORMAT);
         FileOutputStream output = new FileOutputStream(file);
 
-        Image tmp = bim.getScaledInstance(bim.getWidth()/DIMENSIONS_DIVIDER, bim.getHeight()/DIMENSIONS_DIVIDER, Image.SCALE_SMOOTH);
-        BufferedImage dimg = new BufferedImage(bim.getWidth()/DIMENSIONS_DIVIDER, bim.getHeight()/DIMENSIONS_DIVIDER, BufferedImage.TYPE_INT_RGB);
+        Image tmp = bim.getScaledInstance(bim.getWidth() / DIMENSIONS_DIVIDER, bim.getHeight() / DIMENSIONS_DIVIDER, Image.SCALE_SMOOTH);
+        BufferedImage dimg = new BufferedImage(bim.getWidth() / DIMENSIONS_DIVIDER, bim.getHeight() / DIMENSIONS_DIVIDER, BufferedImage.TYPE_INT_RGB);
 
         Graphics2D g2d = dimg.createGraphics();
         g2d.drawImage(tmp, 0, 0, null);
@@ -221,6 +228,8 @@ public class PDFConverter {
                 "<style>\n" +
                 "        table {\n" +
                 "            border-collapse: collapse;\n" +
+                "            margin-left:auto; \n" +
+                "            margin-right:auto;" +
                 "        }\n" +
                 "        th, td {\n" +
                 "            padding: 0.25rem;\n" +

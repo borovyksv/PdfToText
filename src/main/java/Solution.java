@@ -9,15 +9,10 @@ public class Solution {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         PDFConverter converter = new PDFConverter("D:\\pdf\\Acura.pdf");
-//        manager.saveBookmarks();
-//        converter.savePagesAndImagesFromPdf();
-//        converter.saveBookmarks();
+        converter.saveBookmarks();
         converter.savePagesAndImagesFromPdf();
 
 
-//        converter.saveImagesFromPdf();
-//        PDFManager manager = new PDFManager("D:\\pdf\\Acura.pdf");
-//        manager.convertPDF();
     }
 
 }
