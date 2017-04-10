@@ -19,6 +19,8 @@ public class PDFConverterFactory {
 
             if (!fileName.endsWith(".pdf")) throw new IllegalArgumentException("File format MUST be PDF");
 
+
+
             tmpFile = Files.createTempFile(fileName, ".pdf");
             LOGGER.log(Level.INFO, String.format("Temp file %s created", tmpFile));
             FileUtils.copyInputStreamToFile(stream, tmpFile.toFile());
@@ -28,7 +30,8 @@ public class PDFConverterFactory {
         return new PDFConverter(tmpFile.toString());
     }
 
+
     public static PDFConverter newPDFConverter(String fileDirectory) {
-        return newPDFConverter(fileDirectory);
+        return new PDFConverter(fileDirectory);
     }
 }

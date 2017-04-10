@@ -20,6 +20,14 @@
         </plugins>
     </build>
 
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>1.5.2.RELEASE</version>
+    </parent>
+
+
+
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox -->
         <dependency>
@@ -39,11 +47,6 @@
             <version>3.2.1</version>
         </dependency>
 
-        <!--<dependency>-->
-            <!--<groupId>org.bytedeco.javacpp-presets</groupId>-->
-            <!--<artifactId>tesseract</artifactId>-->
-            <!--<version>3.03-rc1-0.11</version>-->
-        <!--</dependency>-->
 
         <!-- https://mvnrepository.com/artifact/com.itextpdf/itextpdf -->
         <dependency>
@@ -59,12 +62,6 @@
         </dependency>
 
 
-        <!--&lt;!&ndash; https://mvnrepository.com/artifact/com.kenai.nbpwr/com-sun-pdfview &ndash;&gt;-->
-        <!--<dependency>-->
-            <!--<groupId>com.kenai.nbpwr</groupId>-->
-            <!--<artifactId>com-sun-pdfview</artifactId>-->
-            <!--<version>1.0.5-201003191900</version>-->
-        <!--</dependency>-->
         <!-- https://mvnrepository.com/artifact/com.asprise.ocr/java-ocr-api -->
         <dependency>
             <groupId>com.asprise.ocr</groupId>
@@ -76,6 +73,23 @@
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-spring-boot-starter</artifactId>
             <version>2.17.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-stream</artifactId>
+            <version>2.17.0</version>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
 
     </dependencies>

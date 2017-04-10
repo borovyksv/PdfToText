@@ -13,7 +13,9 @@ import org.apache.pdfbox.util.ImageIOUtil;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -38,8 +40,8 @@ public class PDFConverter {
     private String resultFolder;
     private String resultFolderPDF;
     private String resultFolderIMG;
-    private String resultFolderTXT;
-
+    private Map<Integer, String> textPages = new HashMap<>();
+//    private String resultFolderTXT;
 
     public PDFConverter(String fileDirectory) {
         this.pdfFilename = fileDirectory;
@@ -47,11 +49,11 @@ public class PDFConverter {
         this.resultFolder = file.getParent() + File.separator + file.getName().substring(0, file.getName().length() - 4) + "_parsed" + File.separator;
         this.resultFolderPDF = resultFolder + "PDF" + File.separator;
         this.resultFolderIMG = resultFolder + "IMG" + File.separator;
-        this.resultFolderTXT = resultFolder + "TXT" + File.separator;
+//        this.resultFolderTXT = resultFolder + "TXT" + File.separator;
         new File(resultFolder).mkdir();
         new File(resultFolderPDF).mkdir();
         new File(resultFolderIMG).mkdir();
-        new File(resultFolderTXT).mkdir();
+//        new File(resultFolderTXT).mkdir();
         LOGGER.log(Level.INFO, String.format("PDFmanager for %s file initialized", fileDirectory));
     }
 
@@ -73,6 +75,10 @@ public class PDFConverter {
         return sb.toString();
     }
 
+    public String getResultFolder() {
+        return resultFolder;
+    }
+
     public void convert() {
         saveBookmarks();
         savePagesAndImagesAndTextFromPdf();
@@ -86,7 +92,7 @@ public class PDFConverter {
             int pageNumber = 1;
             while (splitter.hasMorePages()) {
                 splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
-                LOGGER.log(Level.INFO, String.format("%d.pdf with saved", pageNumber));
+                LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
 
                 pageNumber++;
             }
@@ -105,9 +111,6 @@ public class PDFConverter {
     }
 
     public void saveImagesAndTextFromPdf() {
-
-        savePagesFromPdf();
-
 
         int docPagesSize = 0;
         try (PDDocument document = PDDocument.load(file)) {
@@ -134,7 +137,7 @@ public class PDFConverter {
 
                             BufferedImage image = getImage(document, currentPage);
 
-                            saveText(currentPage, image);
+                            saveTextToCollection(currentPage, image);
 
                             saveImage(currentPage, image);
 
@@ -155,18 +158,34 @@ public class PDFConverter {
         }
     }
 
-    private void saveText(int pageNumber, BufferedImage bufferedImage) {
+//    private void saveText(int pageNumber, BufferedImage bufferedImage) {
+//        Tesseract tessInst = new Tesseract();
+//
+//        try (PrintWriter out = new PrintWriter(resultFolderTXT + pageNumber + ".txt")) {
+//            String result = tessInst.doOCR(bufferedImage);
+//            String filteredResult = textFilter(result);
+//            out.println(filteredResult);
+//            LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
+//
+//        } catch (TesseractException | FileNotFoundException e) {
+//            LOGGER.log(Level.SEVERE, "Exception occur", e);
+//        }
+//    }
+
+    private void saveTextToCollection(int pageNumber, BufferedImage bufferedImage) {
         Tesseract tessInst = new Tesseract();
 
-        try (PrintWriter out = new PrintWriter(resultFolderTXT + pageNumber + ".txt")) {
+        try {
             String result = tessInst.doOCR(bufferedImage);
             String filteredResult = textFilter(result);
-            out.println(filteredResult);
-            LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
 
-        } catch (TesseractException | FileNotFoundException e) {
-            LOGGER.log(Level.SEVERE, "Exception occur", e);
+            textPages.put(pageNumber, filteredResult);
+
+            LOGGER.log(Level.INFO, String.format("%d.txt saved to Collection", pageNumber));
+        } catch (TesseractException e) {
+            e.printStackTrace();
         }
+
     }
 
     private BufferedImage getImage(PDDocument document, int page) throws IOException {
@@ -193,34 +212,46 @@ public class PDFConverter {
 
     }
 
-
-    public void saveBookmarks() {
-
-        new Thread(() -> {
-            PdfReader reader = null;
-            try (PrintWriter bookmarkWriter = new PrintWriter(resultFolder + "Bookmarks.html")) {
-                LOGGER.log(Level.INFO, String.format("%sBookmarks.html created", resultFolder));
-
-                reader = new PdfReader(pdfFilename);
-                java.util.List<HashMap<String, Object>> list = SimpleBookmark.getBookmark(reader);
-
-                //writing to HTML
-                initializeBookmarkHTMLDocument(bookmarkWriter);
-
-                LOGGER.log(Level.INFO, "printing bookmarks");
-                printKids("", list, bookmarkWriter);
-
-                terminateBookmarkHTMLDocument(bookmarkWriter);
+    public Map<Integer, String> getTextPages() {
+        return Collections.unmodifiableMap(textPages);
+    }
 
 
-            } catch (IOException e) {
-                LOGGER.log(Level.SEVERE, "Exception occur", e);
-            } finally {
-                //PdfReader is not AutoCloseable
-                if (reader != null) reader.close();
+    public boolean saveBookmarks() {
+
+        PdfReader reader = null;
+        try {
+            reader = new PdfReader(pdfFilename);
+            java.util.List<HashMap<String, Object>> list = SimpleBookmark.getBookmark(reader);
+            if (list == null) {
+                LOGGER.log(Level.INFO, "Bookmarks list is empty");
+                return false;
+            } else {
+                try (PrintWriter bookmarkWriter = new PrintWriter(resultFolder + "Bookmarks.html")) {
+                    LOGGER.log(Level.INFO, String.format("%sBookmarks.html created", resultFolder));
+
+
+                    //writing to HTML
+                    initializeBookmarkHTMLDocument(bookmarkWriter);
+
+                    LOGGER.log(Level.INFO, "printing bookmarks");
+                    printKids("", list, bookmarkWriter);
+
+                    terminateBookmarkHTMLDocument(bookmarkWriter);
+
+
+                } catch (IOException e) {
+                    LOGGER.log(Level.SEVERE, "Exception occur", e);
+                }
             }
-            LOGGER.log(Level.INFO, "Bookmarks saved");
-        }).start();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Exception occur", e);
+        } finally {
+            //PdfReader is not AutoCloseable
+            if (reader != null) reader.close();
+        }
+        LOGGER.log(Level.INFO, "Bookmarks saved");
+        return true;
     }
 
 
@@ -266,7 +297,7 @@ public class PDFConverter {
                         bookmarkWriter.print(page + " </td>");
                         bookmarkWriter.print("<td><a href=\"PDF\\" + page + ".pdf\">PDF</a>&ensp;");
                         bookmarkWriter.print("<a href=\"IMG\\" + page + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
-                        bookmarkWriter.print("<a href=\"TXT\\" + page + ".txt\">TXT</a><br></td></tr>");
+//                        bookmarkWriter.print("<a href=\"TXT\\" + page + ".txt\">TXT</a><br></td></tr>");
                         break;
                     case "Kids":
                         printKids("&ensp;&ensp;&ensp;" + indentation, (java.util.List<HashMap<String, Object>>) entry.getValue(), bookmarkWriter);
