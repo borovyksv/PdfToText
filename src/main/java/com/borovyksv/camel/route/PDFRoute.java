@@ -14,8 +14,9 @@ public class PDFRoute extends RouteBuilder {
     @Override
     public void configure() throws Exception {
         from("{{route.from}}?maxMessagesPerPoll=1")
-                .process(new PDFProcessor())                            //convert PDF to files
-                .log("Saving to DB ${body}").bean(repository, "save")   //save TXT pages to DB
+                .filter(header("CamelFileName").endsWith(".pdf"))           //filter PDF input
+                .process(new PDFProcessor())                                //convert PDF to files
+                .log("Saving ${body} to DB").bean(repository, "save")       //save TXT pages to DB
                 .log("Message Processed").end();
     }
 }
