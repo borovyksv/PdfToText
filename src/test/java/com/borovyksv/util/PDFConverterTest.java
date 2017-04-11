@@ -1,13 +1,10 @@
 package com.borovyksv.util;
 
-import org.apache.commons.io.FileUtils;
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -15,6 +12,7 @@ import static org.junit.Assert.assertFalse;
 public class PDFConverterTest {
     private static String PATH_TO_TEST_FOLDER = "src/test/java/com/borovyksv/util/";
     private static String MOCK_FILENAME = "mock.pdf";
+    private static int NUMBER_OF_PAGES = 10;
 
     private PDFConverter converter;
 
@@ -34,7 +32,7 @@ public class PDFConverterTest {
     @Test
     public void testNumberOfConvertedPdfPages() {
         converter.savePagesFromPdf();
-        int expected = 1;
+        int expected = NUMBER_OF_PAGES;
         int result = new File(PATH_TO_TEST_FOLDER + "/mock_parsed/PDF").listFiles().length;
         assertEquals(expected, result);
     }
@@ -52,7 +50,7 @@ public class PDFConverterTest {
     @Test
     public void testNumberOfConvertedImages() {
         converter.saveImagesAndTextFromPdf();
-        int expected = 1;
+        int expected = NUMBER_OF_PAGES;
 
         int result = new File(PATH_TO_TEST_FOLDER + "/mock_parsed/IMG").listFiles().length;
         assertEquals(expected, result);
@@ -71,7 +69,7 @@ public class PDFConverterTest {
     @Test
     public void testNumberOfConvertedTextFiles() {
         converter.saveImagesAndTextFromPdf();
-        int expected = 1;
+        int expected = NUMBER_OF_PAGES;
 
         int result = converter.getTextPages().size();
         assertEquals(expected, result);
@@ -81,14 +79,14 @@ public class PDFConverterTest {
 
 
 
-    @AfterClass
-    public static void afterClass() {
-        try {
-            FileUtils.deleteDirectory(new File(PATH_TO_TEST_FOLDER + "/mock_parsed"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+//    @AfterClass
+//    public static void afterClass() {
+//        try {
+//            FileUtils.deleteDirectory(new File(PATH_TO_TEST_FOLDER + "/mock_parsed"));
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
 
 }

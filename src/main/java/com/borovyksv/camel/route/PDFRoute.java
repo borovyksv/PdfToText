@@ -16,6 +16,6 @@ public class PDFRoute extends RouteBuilder {
         from("{{route.from}}?maxMessagesPerPoll=1")
                 .process(new PDFProcessor())                            //convert PDF to files
                 .log("Saving to DB ${body}").bean(repository, "save")   //save TXT pages to DB
-                .end();
+                .log("Message Processed").end();
     }
 }

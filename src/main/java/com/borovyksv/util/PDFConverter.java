@@ -34,7 +34,8 @@ public class PDFConverter {
     private int DIMENSIONS_DIVIDER = IMAGE_DPI / 100;
 
 
-    private String pdfFilename;
+    private String pdfFileDirectory;
+    private String pdfFileName;
 
     private File file;
     private String resultFolder;
@@ -44,8 +45,9 @@ public class PDFConverter {
 //    private String resultFolderTXT;
 
     public PDFConverter(String fileDirectory) {
-        this.pdfFilename = fileDirectory;
+        this.pdfFileDirectory = fileDirectory;
         this.file = new File(fileDirectory);
+        this.pdfFileName = this.file.getName();
         this.resultFolder = file.getParent() + File.separator + file.getName().substring(0, file.getName().length() - 4) + "_parsed" + File.separator;
         this.resultFolderPDF = resultFolder + "PDF" + File.separator;
         this.resultFolderIMG = resultFolder + "IMG" + File.separator;
@@ -57,13 +59,17 @@ public class PDFConverter {
         LOGGER.log(Level.INFO, String.format("PDFmanager for %s file initialized", fileDirectory));
     }
 
-    static private String textFilter(String input) {
+    private String textFilter(String input) {
         String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
         String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
         //delete garbage from whole text
         input = input.replaceAll(pattern, "");
+
+        //add document mark
+        String documentMark = "Parent document: "+ pdfFileName.substring(0, pdfFileName.indexOf(".pdf"));
         //Filter short lines from garbage
         StringBuilder sb = new StringBuilder();
+        sb.append(documentMark).append("\n");
         for (String s : input.split("\n")) {
             Matcher m = Pattern.compile("[=;:_\\-/\\\\\"'@~!+,\\|\\.1%\\*\\$]").matcher(s);
             int matches = 0;
@@ -87,7 +93,7 @@ public class PDFConverter {
     public void savePagesFromPdf() {
         PdfReader reader = null;
         try {
-            reader = new PdfReader(pdfFilename);
+            reader = new PdfReader(pdfFileDirectory);
             SmartPdfSplitter splitter = new SmartPdfSplitter(reader);
             int pageNumber = 1;
             while (splitter.hasMorePages()) {
@@ -221,7 +227,7 @@ public class PDFConverter {
 
         PdfReader reader = null;
         try {
-            reader = new PdfReader(pdfFilename);
+            reader = new PdfReader(pdfFileDirectory);
             java.util.List<HashMap<String, Object>> list = SimpleBookmark.getBookmark(reader);
             if (list == null) {
                 LOGGER.log(Level.INFO, "Bookmarks list is empty");
