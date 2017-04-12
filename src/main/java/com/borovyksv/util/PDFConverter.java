@@ -2,17 +2,24 @@ package com.borovyksv.util;
 
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.SimpleBookmark;
 import com.itextpdf.text.pdf.util.SmartPdfSplitter;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.util.ImageIOUtil;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.tools.imageio.ImageIOUtil;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -66,7 +73,7 @@ public class PDFConverter {
         input = input.replaceAll(pattern, "");
 
         //add document mark
-        String documentMark = "Parent document: "+ pdfFileName.substring(0, pdfFileName.indexOf(".pdf"));
+        String documentMark = "Parent document: " + pdfFileName.substring(0, pdfFileName.indexOf(".pdf"));
         //Filter short lines from garbage
         StringBuilder sb = new StringBuilder();
         sb.append(documentMark).append("\n");
@@ -91,6 +98,30 @@ public class PDFConverter {
     }
 
     public void savePagesFromPdf() {
+
+//        try (PDDocument document = PDDocument.load(file)) {
+//
+//            Splitter splitter = new Splitter();
+//
+//            java.util.List<PDDocument> pages = splitter.split(document);
+//
+//            int pageNumber = 1;
+//            for (PDDocument page : pages) {
+//                try {
+//                    page.save(resultFolderPDF + pageNumber + ".pdf");
+//                    LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
+//
+//                    pageNumber++;
+//                } finally {
+//                    if (page!=null) page.close();
+//                }
+//
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+
         PdfReader reader = null;
         try {
             reader = new PdfReader(pdfFileDirectory);
@@ -120,7 +151,7 @@ public class PDFConverter {
 
         int docPagesSize = 0;
         try (PDDocument document = PDDocument.load(file)) {
-            docPagesSize = document.getDocumentCatalog().getAllPages().size();
+            docPagesSize = document.getNumberOfPages();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
         }
@@ -130,6 +161,9 @@ public class PDFConverter {
             // document must be reloaded every 100 pages to prevent memory leaks
             try (PDDocument document = PDDocument.load(file)) {
                 int endPage = (startPage + 99) < docPagesSize ? startPage + 99 : docPagesSize;
+
+
+                PDFRenderer pdfRenderer = new PDFRenderer(document);
 
                 AtomicInteger counter = new AtomicInteger(startPage);
 
@@ -141,7 +175,7 @@ public class PDFConverter {
 
                             int currentPage = counter.getAndIncrement();
 
-                            BufferedImage image = getImage(document, currentPage);
+                            BufferedImage image = getImage(pdfRenderer, currentPage);
 
                             saveTextToCollection(currentPage, image);
 
@@ -194,10 +228,9 @@ public class PDFConverter {
 
     }
 
-    private BufferedImage getImage(PDDocument document, int page) throws IOException {
+    private BufferedImage getImage(PDFRenderer renderer, int page) throws IOException {
 
-        PDPage currentPage = (PDPage) document.getDocumentCatalog().getAllPages().get(page - 1);
-        return currentPage.convertToImage(BufferedImage.TYPE_INT_RGB, IMAGE_DPI);
+        return renderer.renderImageWithDPI(page - 1, IMAGE_DPI, ImageType.RGB);
 
     }
 
@@ -224,13 +257,10 @@ public class PDFConverter {
 
 
     public boolean saveBookmarks() {
-
-        PdfReader reader = null;
-        try {
-            reader = new PdfReader(pdfFileDirectory);
-            java.util.List<HashMap<String, Object>> list = SimpleBookmark.getBookmark(reader);
-            if (list == null) {
-                LOGGER.log(Level.INFO, "Bookmarks list is empty");
+        try (PDDocument document = PDDocument.load(file)) {
+            PDDocumentOutline outline = document.getDocumentCatalog().getDocumentOutline();
+            if (outline == null) {
+                LOGGER.log(Level.INFO, "PDF file does not have Bookmarks");
                 return false;
             } else {
                 try (PrintWriter bookmarkWriter = new PrintWriter(resultFolder + "Bookmarks.html")) {
@@ -241,7 +271,7 @@ public class PDFConverter {
                     initializeBookmarkHTMLDocument(bookmarkWriter);
 
                     LOGGER.log(Level.INFO, "printing bookmarks");
-                    printKids("", list, bookmarkWriter);
+                    printBookmark(outline, "", document, bookmarkWriter);
 
                     terminateBookmarkHTMLDocument(bookmarkWriter);
 
@@ -252,9 +282,6 @@ public class PDFConverter {
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
-        } finally {
-            //PdfReader is not AutoCloseable
-            if (reader != null) reader.close();
         }
         LOGGER.log(Level.INFO, "Bookmarks saved");
         return true;
@@ -291,27 +318,44 @@ public class PDFConverter {
                 "</HTML>");
     }
 
-    private void printKids(String indentation, java.util.List<HashMap<String, Object>> value, PrintWriter bookmarkWriter) {
-        value.forEach(map -> {
-            map.entrySet().forEach(entry -> {
-                switch (entry.getKey()) {
-                    case "Title":
-                        bookmarkWriter.print("<tr><td>" + indentation + entry.getValue() + ": ");
-                        break;
-                    case "Page":
-                        String page = entry.getValue().toString().split(" ")[0];
-                        bookmarkWriter.print(page + " </td>");
-                        bookmarkWriter.print("<td><a href=\"PDF\\" + page + ".pdf\">PDF</a>&ensp;");
-                        bookmarkWriter.print("<a href=\"IMG\\" + page + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
-//                        bookmarkWriter.print("<a href=\"TXT\\" + page + ".txt\">TXT</a><br></td></tr>");
-                        break;
-                    case "Kids":
-                        printKids("&ensp;&ensp;&ensp;" + indentation, (java.util.List<HashMap<String, Object>>) entry.getValue(), bookmarkWriter);
-                        break;
-                }
-            });
-        });
+    public void printBookmark(PDOutlineNode bookmark, String indentation, PDDocument document, PrintWriter bookmarkWriter) throws IOException {
+        PDOutlineItem current = bookmark.getFirstChild();
+        while (current != null) {
+            PDPage currentPage = current.findDestinationPage(document);
+            Integer pageNumber = document.getDocumentCatalog().getPages().indexOf(currentPage) + 1;
+
+            bookmarkWriter.print("<tr><td>" + indentation + current.getTitle() + ": ");
+            bookmarkWriter.print(pageNumber + " </td>");
+            bookmarkWriter.print("<td><a href=\"PDF\\" + pageNumber + ".pdf\">PDF</a>&ensp;");
+            bookmarkWriter.print("<a href=\"IMG\\" + pageNumber + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
+
+            printBookmark(current, indentation + "&ensp;&ensp;&ensp;", document, bookmarkWriter);
+            current = current.getNextSibling();
+        }
     }
+
+
+//    private void printKids(String indentation, java.util.List<HashMap<String, Object>> value, PrintWriter bookmarkWriter) {
+//        value.forEach(map -> {
+//            map.entrySet().forEach(entry -> {
+//                switch (entry.getKey()) {
+//                    case "Title":
+//                        bookmarkWriter.print("<tr><td>" + indentation + entry.getValue() + ": ");
+//                        break;
+//                    case "Page":
+//                        String page = entry.getValue().toString().split(" ")[0];
+//                        bookmarkWriter.print(page + " </td>");
+//                        bookmarkWriter.print("<td><a href=\"PDF\\" + page + ".pdf\">PDF</a>&ensp;");
+//                        bookmarkWriter.print("<a href=\"IMG\\" + page + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
+////                        bookmarkWriter.print("<a href=\"TXT\\" + page + ".txt\">TXT</a><br></td></tr>");
+//                        break;
+//                    case "Kids":
+//                        printKids("&ensp;&ensp;&ensp;" + indentation, (java.util.List<HashMap<String, Object>>) entry.getValue(), bookmarkWriter);
+//                        break;
+//                }
+//            });
+//        });
+//    }
 
 
 }

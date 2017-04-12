@@ -1,9 +1,10 @@
 package com.borovyksv.camel.processor;
 
 import com.borovyksv.mongo.Document;
-import com.borovyksv.mongo.Page;
+import com.borovyksv.mongo.DocumentAdapter;
 import com.borovyksv.util.PDFConverter;
 import com.borovyksv.util.PDFConverterFactory;
+import com.borovyksv.util.PDFConverterTest;
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
 import net.lingala.zip4j.model.ZipParameters;
@@ -11,13 +12,14 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
 import org.apache.commons.io.FileUtils;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
+import org.junit.runner.notification.Failure;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,18 +36,32 @@ public class PDFProcessor implements Processor {
         converter.convert();
 
 
-        sendZippedFilesToRoute(fileName, converter, "{{route.to}}", exchange);
+        sendZippedFilesToRoute("{{route.to}}", fileName, converter, exchange);
 
+        //set body to Document with txt files and send to DB route
+        sendTextPagesWIthBody(exchange, fileName, converter);
 
-        //set body to Document with txt files, and send to DB route
+//        runTests();
+    }
+
+    private void sendTextPagesWIthBody(Exchange exchange, String fileName, PDFConverter converter) {
         Map<Integer, String> textPages = converter.getTextPages();
-        Document document = getDocumentFromMap(fileName, textPages);
+        Document document = DocumentAdapter.getDocumentFromMap(fileName, textPages);
         exchange.getOut().setBody(document);
     }
 
+    private void runTests() {
+        Result result = JUnitCore.runClasses(PDFConverterTest.class);
+
+        for (Failure failure : result.getFailures()) {
+            System.out.println(failure.toString());
+        }
+
+        System.out.println(result.wasSuccessful());
+    }
 
 
-    private void sendZippedFilesToRoute(String fileName, PDFConverter converter, String toRoute, Exchange exchange) throws IOException {
+    private void sendZippedFilesToRoute(String toRoute, String fileName, PDFConverter converter, Exchange exchange) throws IOException {
         String zipFileName = fileName.replace(".pdf", ".zip");
         ZipFile convertedFile = zip(converter.getResultFolder(), zipFileName);
 
@@ -73,22 +89,4 @@ public class PDFProcessor implements Processor {
         return zipFile;
     }
 
-    private Document getDocumentFromMap(String fileName, Map<Integer, String> textPages) {
-        Document document = new Document();
-        List<Page> pageList = new ArrayList<>();
-
-
-        String cuttedFileName = fileName.substring(0, fileName.lastIndexOf('.'));
-        document.setName(cuttedFileName);
-
-        for (Map.Entry<Integer, String> entry : textPages.entrySet()) {
-            Page page = new Page();
-            page.setId(entry.getKey());
-            page.setText(entry.getValue());
-            pageList.add(page);
-        }
-
-        document.setPages(pageList);
-        return document;
-    }
 }
