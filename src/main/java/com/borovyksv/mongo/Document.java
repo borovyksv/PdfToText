@@ -30,6 +30,25 @@ public class Document {
                 '}';
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Document document = (Document) o;
+
+        if (!name.equals(document.name)) return false;
+        return pages.equals(document.pages);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name.hashCode();
+        result = 31 * result + pages.hashCode();
+        return result;
+    }
+
     public String getName() {
         return name;
     }

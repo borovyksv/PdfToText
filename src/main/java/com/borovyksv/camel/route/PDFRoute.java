@@ -17,12 +17,12 @@ public class PDFRoute extends RouteBuilder {
     @Override
     public void configure() throws Exception {
         from("{{route.from}}?maxMessagesPerPoll=1")
-                .filter(header("CamelFileName").endsWith(".pdf"))                //filter PDF input
-                .process(pdfProcessor).log("Sent ${header.CamelFileName} to {{route.to}}")    //convert PDF to files
+                .filter(header("CamelFileName").endsWith(".pdf"))                               //filter PDF input
+                .process(pdfProcessor).log("Sent ${header.CamelFileName} to {{route.to}}")      //convert PDF to files
                 .to("{{route.to}}");
 
         from("direct:database")
-                .log("Saving ${body} to DB")                                     //save TXT pages to DB
+                .log("Saving ${body} to DB")                                                    //save TXT pages to DB
                 .bean(repository, "save");
     }
 }
