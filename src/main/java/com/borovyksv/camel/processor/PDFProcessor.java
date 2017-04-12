@@ -32,23 +32,23 @@ public class PDFProcessor implements Processor {
         converter.convert();
 
 
-        sendZippedFilesWithBody(fileName, converter, exchange);
+        sendZippedFilesWithBody(exchange, fileName, converter);
 
-        //set body to Document with txt files and send to DB route
-        sendTextPagesToDBRoute(exchange, fileName, converter);
+        //set body to (Document with txt files) and send to DB route
+        sendTextPagesToDBRoute("direct:database", exchange, fileName, converter);
 
     }
 
-    private void sendTextPagesToDBRoute(Exchange exchange, String fileName, PDFConverter converter) {
+    private void sendTextPagesToDBRoute(String toRoute, Exchange exchange, String fileName, PDFConverter converter) {
         Map<Integer, String> textPages = converter.getTextPages();
         Document document = DocumentAdapter.getDocumentFromMap(fileName, textPages);
 
         ProducerTemplate template = exchange.getContext().createProducerTemplate();
-        template.sendBody("direct:database", document);
+        template.sendBody(toRoute, document);
     }
 
 
-    private void sendZippedFilesWithBody(String fileName, PDFConverter converter, Exchange exchange) throws IOException {
+    private void sendZippedFilesWithBody(Exchange exchange, String fileName, PDFConverter converter) throws IOException {
         String zipFileName = fileName.replace(".pdf", ".zip");
         ZipFile convertedFile = zip(converter.getResultFolder(), zipFileName);
 

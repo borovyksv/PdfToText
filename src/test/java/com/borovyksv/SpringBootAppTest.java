@@ -24,7 +24,7 @@ public class SpringBootAppTest  {
         // we expect that one or more messages is automatic done by the Camel
         // route as it uses a timer to trigger
         NotifyBuilder notify = new NotifyBuilder(camelContext).whenDone(1).create();
-        assertTrue(notify.matches(1, TimeUnit.MINUTES));
+        assertTrue(notify.matches(1, TimeUnit.HOURS));
     }
 
 }

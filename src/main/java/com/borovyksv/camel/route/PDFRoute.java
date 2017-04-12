@@ -18,7 +18,7 @@ public class PDFRoute extends RouteBuilder {
     public void configure() throws Exception {
         from("{{route.from}}?maxMessagesPerPoll=1")
                 .filter(header("CamelFileName").endsWith(".pdf"))                //filter PDF input
-                .process(pdfProcessor).log("Sent ${headers} to {{route.to}}")    //convert PDF to files
+                .process(pdfProcessor).log("Sent ${header.CamelFileName} to {{route.to}}")    //convert PDF to files
                 .to("{{route.to}}");
 
         from("direct:database")

@@ -49,8 +49,6 @@ public class PDFConverter {
     private String resultFolderPDF;
     private String resultFolderIMG;
     private Map<Integer, String> textPages = new HashMap<>();
-//    private String resultFolderTXT;
-
     public PDFConverter(String fileDirectory) {
         this.pdfFileDirectory = fileDirectory;
         this.file = new File(fileDirectory);
@@ -64,6 +62,15 @@ public class PDFConverter {
         new File(resultFolderIMG).mkdir();
 //        new File(resultFolderTXT).mkdir();
         LOGGER.log(Level.INFO, String.format("PDFmanager for %s file initialized", fileDirectory));
+    }
+
+    public String getResultFolderIMG() {
+        return resultFolderIMG;
+    }
+//    private String resultFolderTXT;
+
+    public String getResultFolderPDF() {
+        return resultFolderPDF;
     }
 
     private String textFilter(String input) {
@@ -149,18 +156,13 @@ public class PDFConverter {
 
     public void saveImagesAndTextFromPdf() {
 
-        int docPagesSize = 0;
-        try (PDDocument document = PDDocument.load(file)) {
-            docPagesSize = document.getNumberOfPages();
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Exception occur", e);
-        }
+        int numberOfPages = getNumberOfPages();
 
-        for (int startPage = 1; startPage <= docPagesSize; startPage += 100) {
+        for (int startPage = 1; startPage <= numberOfPages; startPage += 100) {
 
             // document must be reloaded every 100 pages to prevent memory leaks
             try (PDDocument document = PDDocument.load(file)) {
-                int endPage = (startPage + 99) < docPagesSize ? startPage + 99 : docPagesSize;
+                int endPage = (startPage + 99) < numberOfPages ? startPage + 99 : numberOfPages;
 
 
                 PDFRenderer pdfRenderer = new PDFRenderer(document);
@@ -196,6 +198,16 @@ public class PDFConverter {
                 LOGGER.log(Level.SEVERE, "Exception occur", e);
             }
         }
+    }
+
+    public int getNumberOfPages() {
+        int docPagesSize = 0;
+        try (PDDocument document = PDDocument.load(file)) {
+            docPagesSize = document.getNumberOfPages();
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Exception occur", e);
+        }
+        return docPagesSize;
     }
 
 //    private void saveText(int pageNumber, BufferedImage bufferedImage) {
