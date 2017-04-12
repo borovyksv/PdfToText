@@ -14,7 +14,7 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(CamelSpringBootRunner.class)
 @SpringBootTest(classes = SpringBootApp.class)
-public class SpringBootAppTest {
+public class SpringBootAppTest  {
 
     @Autowired
     private CamelContext camelContext;
@@ -24,8 +24,7 @@ public class SpringBootAppTest {
         // we expect that one or more messages is automatic done by the Camel
         // route as it uses a timer to trigger
         NotifyBuilder notify = new NotifyBuilder(camelContext).whenDone(1).create();
-        System.out.println("TEST METHOD!!!!!!!!!!!!!!!");
-        assertTrue(notify.matches(10, TimeUnit.SECONDS));
+        assertTrue(notify.matches(1, TimeUnit.MINUTES));
     }
 
 }

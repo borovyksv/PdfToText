@@ -4,26 +4,22 @@ import com.borovyksv.mongo.Document;
 import com.borovyksv.mongo.DocumentAdapter;
 import com.borovyksv.util.PDFConverter;
 import com.borovyksv.util.PDFConverterFactory;
-import com.borovyksv.util.PDFConverterTest;
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
 import net.lingala.zip4j.model.ZipParameters;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
-import org.apache.commons.io.FileUtils;
-import org.junit.runner.JUnitCore;
-import org.junit.runner.Result;
-import org.junit.runner.notification.Failure;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@Component
 public class PDFProcessor implements Processor {
     private static final Logger LOGGER = Logger.getLogger(PDFProcessor.class.getName());
 
@@ -36,40 +32,28 @@ public class PDFProcessor implements Processor {
         converter.convert();
 
 
-        sendZippedFilesToRoute("{{route.to}}", fileName, converter, exchange);
+        sendZippedFilesWithBody(fileName, converter, exchange);
 
         //set body to Document with txt files and send to DB route
-        sendTextPagesWIthBody(exchange, fileName, converter);
+        sendTextPagesToDBRoute(exchange, fileName, converter);
 
-//        runTests();
     }
 
-    private void sendTextPagesWIthBody(Exchange exchange, String fileName, PDFConverter converter) {
+    private void sendTextPagesToDBRoute(Exchange exchange, String fileName, PDFConverter converter) {
         Map<Integer, String> textPages = converter.getTextPages();
         Document document = DocumentAdapter.getDocumentFromMap(fileName, textPages);
-        exchange.getOut().setBody(document);
-    }
 
-    private void runTests() {
-        Result result = JUnitCore.runClasses(PDFConverterTest.class);
-
-        for (Failure failure : result.getFailures()) {
-            System.out.println(failure.toString());
-        }
-
-        System.out.println(result.wasSuccessful());
+        ProducerTemplate template = exchange.getContext().createProducerTemplate();
+        template.sendBody("direct:database", document);
     }
 
 
-    private void sendZippedFilesToRoute(String toRoute, String fileName, PDFConverter converter, Exchange exchange) throws IOException {
+    private void sendZippedFilesWithBody(String fileName, PDFConverter converter, Exchange exchange) throws IOException {
         String zipFileName = fileName.replace(".pdf", ".zip");
         ZipFile convertedFile = zip(converter.getResultFolder(), zipFileName);
 
-        ProducerTemplate template = exchange.getContext().createProducerTemplate();
-        template.sendBodyAndHeader(toRoute, FileUtils.openInputStream(convertedFile.getFile()),
-                "CamelFileName", zipFileName);
-        LOGGER.log(Level.INFO, String.format("%s sended to %s", zipFileName, toRoute));
-
+        exchange.getOut().setBody(convertedFile.getFile());
+        exchange.getOut().setHeader("CamelFileName", zipFileName);
 
     }
 
