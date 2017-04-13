@@ -37,7 +37,7 @@ public class PDFConverterTest {
 
     @Test
     public void testNumberOfConvertedPdfPages() {
-        converter.savePagesFromPdf();
+        converter.savePages();
         int expected = NUMBER_OF_PAGES;
         int result = new File(converter.getResultFolderPDF()).listFiles().length;
         assertEquals(expected, result);
@@ -45,7 +45,7 @@ public class PDFConverterTest {
 
     @Test
     public void testFormatOfConvertedPdfPages() {
-        converter.savePagesFromPdf();
+        converter.savePages();
         String expectedFormat = ".pdf";
 
         String resultFileName = new File(converter.getResultFolderPDF()).listFiles()[0].getName();
@@ -55,7 +55,7 @@ public class PDFConverterTest {
 
     @Test
     public void testNumberOfConvertedImages() {
-        converter.saveImagesAndTextFromPdf();
+        converter.saveImages();
         int expected = NUMBER_OF_PAGES;
 
         int result = new File(converter.getResultFolderIMG()).listFiles().length;
@@ -64,7 +64,7 @@ public class PDFConverterTest {
 
     @Test
     public void testFormatOfConvertedImages() {
-        converter.savePagesFromPdf();
+        converter.savePages();
         String expectedFormat = ".jpg";
 
         String resultFileName = new File(converter.getResultFolderIMG()).listFiles()[0].getName();
@@ -74,11 +74,16 @@ public class PDFConverterTest {
 
     @Test
     public void testNumberOfConvertedTextFiles() {
-        converter.saveImagesAndTextFromPdf();
+        converter.saveImagesAndText();
         int expected = NUMBER_OF_PAGES;
 
         int result = converter.getTextPages().size();
         assertEquals(expected, result);
+    }
+
+    @Test
+    public void testIsScannedPDF(){
+        assertEquals(true, converter.isScannedPDF());
     }
 
 
