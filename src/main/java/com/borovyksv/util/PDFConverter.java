@@ -43,7 +43,6 @@ public class PDFConverter {
 
     private String pdfFileDirectory;
     private String pdfFileName;
-
     private File file;
     private String resultFolder;
     private String resultFolderPDF;
@@ -62,6 +61,10 @@ public class PDFConverter {
         new File(resultFolderIMG).mkdir();
 //        new File(resultFolderTXT).mkdir();
         LOGGER.log(Level.INFO, String.format("PDFmanager for %s file initialized", fileDirectory));
+    }
+
+    public String getPdfFileName() {
+        return pdfFileName;
     }
 
     public String getResultFolderIMG() {

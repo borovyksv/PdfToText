@@ -31,18 +31,17 @@ public class RouteMockTest extends CamelTestSupport {
             public void configure() throws Exception {
                 from("file:filterStart")
                         .log("Received ${header.CamelFileName} from file:filterStart")
-                        .filter(header("CamelFileName").endsWith(".pdf"))                               //filter PDF input
+                        .filter(header("CamelFileName").endsWith(".pdf"))
                         .to("mock:fileFilterEndPoint");
 
                 from("file:start")
                         .log("Received ${header.CamelFileName} from file:start")
-                        .filter(header("CamelFileName").endsWith(".pdf"))                               //filter PDF input
                         .process(exchange -> exchange.getOut().setBody(exchange.getIn().getBody().toString().replace(".pdf", ".zip"))) //convert PDF to Zip
                         .log("Sent ${body} to mock:fileEndPoint")
                         .to("mock:fileEndPoint");
 
                 from("direct:database")
-                        .log("Saving ${body} to DB")                                                    //save TXT pages to DB
+                        .log("Saving ${body} to DB")
                         .bean(repository, "save")
                         .to("mock:dbEndpoint");
             }
