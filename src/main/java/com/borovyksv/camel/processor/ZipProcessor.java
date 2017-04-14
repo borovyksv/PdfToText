@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @Component
 public class ZipProcessor implements Processor {
@@ -32,17 +33,20 @@ public class ZipProcessor implements Processor {
     }
 
     private synchronized ZipFile zip(String source, String fileName) {
-        String resultFile = Paths.get(source).getParent().toString()+ File.separator+fileName;
-        System.out.println("IN ZIP FILENAME "+ resultFile);
 
         ZipFile zipFile = null;
         try {
+            Path tempDirectory = Files.createTempDirectory("");
+
+            String resultFile = tempDirectory.toString() + File.separatorChar + fileName;
             zipFile = new ZipFile(resultFile);
             ZipParameters zipParameters = new ZipParameters();
             zipParameters.setIncludeRootFolder(false);
             zipFile.addFolder(source, zipParameters);
 
         } catch (ZipException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
