@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,17 +69,24 @@ public class PDFConverter {
         new File(resultFolder).mkdir();
         new File(resultFolderPDF).mkdir();
         new File(resultFolderIMG).mkdir();
+        this.isScanned = isScannedPDF();
+
         LOGGER.log(Level.INFO, String.format("PDFConverter for %s file initialized", absolutePath));
     }
 
     public void convert() {
+        Instant start = Instant.now();
+
         saveBookmarks();
         savePages();
         saveImagesAndText();
+
+        Instant end = Instant.now();
+        LOGGER.log(Level.INFO, String.format("\n\n\n\nConversion time is %s ", Duration.between(start, end)));
+
     }
 
     public void saveImagesAndText() {
-        isScanned = isScannedPDF();
         LOGGER.log(Level.INFO, String.format("%s is %s pdf", pdfFileName, isScanned ? "scanned" : "text format"));
 
         if (isScanned) {
@@ -97,7 +106,7 @@ public class PDFConverter {
             int pageNumber = 1;
             while (splitter.hasMorePages()) {
                 splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
-                if (pageNumber % 20 == 0) LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
+                if (pageNumber % 50 == 0) LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
 
                 pageNumber++;
             }
@@ -123,7 +132,7 @@ public class PDFConverter {
 
                     textPages.put(pageNumber, result);
 
-                    if (pageNumber % 20 == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
+                    if (pageNumber % 50 == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
                 } catch (IOException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);
                 } finally {
                     try {
@@ -187,8 +196,10 @@ public class PDFConverter {
     private void saveImagesAndTextFromScannedPDF() {
 
         int numberOfPages = getNumberOfPages();
+        LOGGER.log(Level.INFO, String.format("Starting OCR to %s ", pdfFileName));
 
-        for (int startPage = 1; startPage <= numberOfPages; startPage += 100) {
+
+        for (int startPage = 1; startPage <= numberOfPages; startPage += 100)   {
 
             // document must be reloaded every 100 pages to prevent memory leaks
             try (PDDocument document = PDDocument.load(file)) {
@@ -219,7 +230,7 @@ public class PDFConverter {
                     });
                 }
                 executorService.shutdown();
-                executorService.awaitTermination(30, TimeUnit.MINUTES);
+                executorService.awaitTermination(1, TimeUnit.HOURS);
                 System.gc();
 
             } catch (IOException | InterruptedException e) {
@@ -251,7 +262,7 @@ public class PDFConverter {
 
             textPages.put(pageNumber, filteredResult);
 
-            if (pageNumber % 20 == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
+            if (pageNumber % 50 == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
         } catch (TesseractException e) {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
         }
@@ -278,7 +289,7 @@ public class PDFConverter {
 
         ImageIOUtil.writeImage(dimg, IMAGE_FORMAT, output, IMAGE_DPI, IMAGE_COMPRESSION);
         g2d.dispose();
-        if (pageNumber % 20 == 0) LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
+        if (pageNumber % 50 == 0) LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
 
     }
 

@@ -10,10 +10,7 @@ import org.apache.camel.ProducerTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Component
@@ -27,13 +24,7 @@ public class PDFProcessor implements Processor {
 
         PDFConverter converter = PDFConverterFactory.newPDFConverter(stream, fileName);
 
-        Instant start = Instant.now();
-
         converter.convert();
-
-        Instant end = Instant.now();
-        LOGGER.log(Level.INFO, String.format("\n\n\n\nConversion time is %s ", Duration.between(start, end)));
-
 
         exchange.getOut().setHeader(Exchange.FILE_NAME, fileName);
         exchange.getOut().setBody(converter);

@@ -50,10 +50,14 @@
     <orderEntry type="library" name="Maven: org.apache.camel:camel-spring-boot-starter:2.18.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.camel:camel-spring-boot:2.18.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.camel:camel-core-starter:2.18.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.camel:camel-core:2.18.0" level="project" />
     <orderEntry type="library" name="Maven: com.github.ben-manes.caffeine:caffeine:2.3.5" level="project" />
     <orderEntry type="library" name="Maven: org.apache.camel:camel-stream-starter:2.18.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.camel:camel-stream:2.18.0" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.camel:camel-zipfile:2.18.0" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.camel:camel-core:2.18.0" level="project" />
+    <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.7.24" level="project" />
+    <orderEntry type="library" name="Maven: com.sun.xml.bind:jaxb-core:2.2.11" level="project" />
+    <orderEntry type="library" name="Maven: com.sun.xml.bind:jaxb-impl:2.2.11" level="project" />
     <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-starter-data-mongodb:1.5.2.RELEASE" level="project" />
     <orderEntry type="library" name="Maven: org.mongodb:mongodb-driver:3.4.2" level="project" />
     <orderEntry type="library" name="Maven: org.mongodb:bson:3.4.2" level="project" />
@@ -61,7 +65,6 @@
     <orderEntry type="library" name="Maven: org.springframework.data:spring-data-mongodb:1.10.1.RELEASE" level="project" />
     <orderEntry type="library" name="Maven: org.springframework:spring-tx:4.3.7.RELEASE" level="project" />
     <orderEntry type="library" name="Maven: org.springframework.data:spring-data-commons:1.13.1.RELEASE" level="project" />
-    <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.7.24" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.springframework.boot:spring-boot-starter-test:1.5.2.RELEASE" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.springframework.boot:spring-boot-test:1.5.2.RELEASE" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.springframework.boot:spring-boot-test-autoconfigure:1.5.2.RELEASE" level="project" />
@@ -81,8 +84,6 @@
     <orderEntry type="library" scope="TEST" name="Maven: org.apache.camel:camel-test-spring:2.18.0" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.apache.camel:camel-test:2.18.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.camel:camel-spring:2.18.0" level="project" />
-    <orderEntry type="library" name="Maven: com.sun.xml.bind:jaxb-core:2.2.11" level="project" />
-    <orderEntry type="library" name="Maven: com.sun.xml.bind:jaxb-impl:2.2.11" level="project" />
     <orderEntry type="library" name="Maven: org.ghost4j:ghost4j:1.0.1" level="project" />
     <orderEntry type="library" name="Maven: net.java.dev.jna:jna:4.2.2" level="project" />
     <orderEntry type="library" name="Maven: commons-beanutils:commons-beanutils:1.9.3" level="project" />
