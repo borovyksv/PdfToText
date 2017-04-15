@@ -27,10 +27,10 @@ public class PDFProcessor implements Processor {
         converter.convert();
 
         exchange.getOut().setHeader(Exchange.FILE_NAME, fileName);
-        exchange.getOut().setBody(converter);
+        exchange.getOut().setBody(converter.getResultFolder());
 
         //set body to (Document with txt files) and send to DB route
-        sendTextPagesToDBRoute("direct:database", exchange, fileName, converter);
+        sendTextPagesToDBRoute("seda:database", exchange, fileName, converter);
 
     }
 

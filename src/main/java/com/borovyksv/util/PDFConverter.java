@@ -37,8 +37,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PDFConverter {
-    private static final int N_THREADS = 4;
     private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
+    private static final int N_THREADS = 10;
+    public static final int MESSAGE_TO_LOG = 100;
+
     private int IMAGE_DPI = 300;
     private float IMAGE_COMPRESSION = 0.7f;
     private String IMAGE_FORMAT = "jpg";
@@ -82,7 +84,7 @@ public class PDFConverter {
         saveImagesAndText();
 
         Instant end = Instant.now();
-        LOGGER.log(Level.INFO, String.format("\n\n\n\nConversion time is %s ", Duration.between(start, end)));
+        LOGGER.log(Level.INFO, String.format("%n%n%n%nConversion time is %s ", Duration.between(start, end)));
 
     }
 
@@ -106,7 +108,7 @@ public class PDFConverter {
             int pageNumber = 1;
             while (splitter.hasMorePages()) {
                 splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
-                if (pageNumber % 50 == 0) LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
+                if (pageNumber % MESSAGE_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
 
                 pageNumber++;
             }
@@ -132,7 +134,7 @@ public class PDFConverter {
 
                     textPages.put(pageNumber, result);
 
-                    if (pageNumber % 50 == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
+                    if (pageNumber % MESSAGE_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
                 } catch (IOException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);
                 } finally {
                     try {
@@ -181,7 +183,6 @@ public class PDFConverter {
                 }
                 executorService.shutdown();
                 executorService.awaitTermination(30, TimeUnit.MINUTES);
-                System.gc();
 
             } catch (IOException | InterruptedException e) {
                 LOGGER.log(Level.SEVERE, "Exception occur", e);
@@ -231,7 +232,6 @@ public class PDFConverter {
                 }
                 executorService.shutdown();
                 executorService.awaitTermination(1, TimeUnit.HOURS);
-                System.gc();
 
             } catch (IOException | InterruptedException e) {
                 LOGGER.log(Level.SEVERE, "Exception occur", e);
@@ -262,7 +262,7 @@ public class PDFConverter {
 
             textPages.put(pageNumber, filteredResult);
 
-            if (pageNumber % 50 == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
+            if (pageNumber % MESSAGE_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
         } catch (TesseractException e) {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
         }
@@ -289,7 +289,7 @@ public class PDFConverter {
 
         ImageIOUtil.writeImage(dimg, IMAGE_FORMAT, output, IMAGE_DPI, IMAGE_COMPRESSION);
         g2d.dispose();
-        if (pageNumber % 50 == 0) LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
+        if (pageNumber % MESSAGE_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
 
     }
 

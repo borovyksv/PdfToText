@@ -1,6 +1,5 @@
 package com.borovyksv.camel.processor;
 
-import com.borovyksv.util.PDFConverter;
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
 import net.lingala.zip4j.model.ZipParameters;
@@ -17,22 +16,22 @@ import java.nio.file.Path;
 public class ZipProcessor implements Processor {
     @Override
     public void process(Exchange exchange) throws Exception {
-        PDFConverter converter = exchange.getIn().getBody(PDFConverter.class);
+        String folder = exchange.getIn().getBody(String.class);
         String fileName = exchange.getIn().getHeader(Exchange.FILE_NAME, String.class);
 
-        sendZippedFilesWithBody(exchange, fileName, converter);
+        sendZippedFilesWithBody(exchange, fileName, folder);
     }
 
-    private void sendZippedFilesWithBody(Exchange exchange, String fileName, PDFConverter converter) throws IOException {
+    private void sendZippedFilesWithBody(Exchange exchange, String fileName, String folder) throws IOException {
         String zipFileName = fileName.replace(".pdf", ".zip");
-        ZipFile convertedFile = zip(converter.getResultFolder(), zipFileName);
+        ZipFile convertedFile = zip(folder, zipFileName);
 
         exchange.getOut().setHeader(Exchange.FILE_NAME, zipFileName);
         exchange.getOut().setBody(convertedFile.getFile());
 
     }
 
-    private synchronized ZipFile zip(String source, String fileName) {
+    private ZipFile zip(String source, String fileName) {
 
         ZipFile zipFile = null;
         try {

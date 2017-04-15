@@ -22,14 +22,14 @@ public class PDFRoute extends RouteBuilder {
         from("{{route.from}}?maxMessagesPerPoll=1")
                 .filter(header("CamelFileName").endsWith(".pdf"))                                   //filter PDF input
                 .process(pdfProcessor).log("Sending ${header.CamelFileName} to Zip process")        //convert PDF to files
-                .to("direct:convertedPdf");
+                .to("seda:convertedPdf");
 
-        from("direct:convertedPdf")
+        from("seda:convertedPdf")
                 .process(zipProcessor).log("Zipped ${header.CamelFileName} sending to {{route.to}}")//Zipping files
                 .to("{{route.to}}");                                                                //Sending .zip to final destination
 
 
-        from("direct:database")
+        from("seda:database")
                 .log("Saving ${body} to DB")                                                        //save TXT pages to DB
                 .bean(repository, "save");
     }
