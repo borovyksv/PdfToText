@@ -91,20 +91,6 @@
         </dependency>
 
 
-        <!-- https://mvnrepository.com/artifact/org.ghost4j/ghost4j -->
-        <dependency>
-            <groupId>org.ghost4j</groupId>
-            <artifactId>ghost4j</artifactId>
-            <version>1.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>1.2.17</version>
-        </dependency>
-
-
-
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
@@ -122,6 +108,17 @@
             <artifactId>levigo-jbig2-imageio</artifactId>
             <version>1.6.5</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.jai-imageio</groupId>
+            <artifactId>jai-imageio-core</artifactId>
+            <version>1.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.jai-imageio</groupId>
+            <artifactId>jai-imageio-jpeg2000</artifactId>
+            <version>1.3.0</version>
+        </dependency>
+
          <!--https://mvnrepository.com/artifact/net.sourceforge.tess4j/tess4j-->
         <dependency>
             <groupId>net.sourceforge.tess4j</groupId>

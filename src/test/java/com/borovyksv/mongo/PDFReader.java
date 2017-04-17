@@ -25,7 +25,7 @@
 ////        PDFTextStripper pdfTextStripper = new PDFTextStripper();
 ////        pdfTextStripper.setEndPage(3);
 ////        System.out.println(pdfTextStripper.getText(doc).trim().length());
-//        System.out.println(isScannedPDF(new File("D:\\pdf\\original\\.camel\\2k14acadia.pdf")));
+//        System.out.println(initConstants(new File("D:\\pdf\\original\\.camel\\2k14acadia.pdf")));
 //
 //
 //
@@ -53,7 +53,7 @@
 ////        }
 //    }
 //
-//    private static boolean isScannedPDF(File file){
+//    private static boolean initConstants(File file){
 //        try(PDDocument doc = PDDocument.load(file)) {
 //            PDFTextStripper pdfTextStripper = new PDFTextStripper();
 //            pdfTextStripper.setEndPage(3);

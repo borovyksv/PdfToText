@@ -83,7 +83,7 @@ public class PDFConverterTest {
 
     @Test
     public void testIsScannedPDF(){
-        assertEquals(true, converter.isScannedPDF());
+        assertEquals(true, converter.isScanned());
     }
 
 

@@ -39,13 +39,15 @@ import java.util.regex.Pattern;
 public class PDFConverter {
     private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
     private static final int N_THREADS = 10;
-    public static final int MESSAGE_TO_LOG = 100;
+    public static final int MESSAGES_TO_LOG = 10;
 
     private int IMAGE_DPI = 300;
     private float IMAGE_COMPRESSION = 0.7f;
     private String IMAGE_FORMAT = "jpg";
     private int DIMENSIONS_DIVIDER = IMAGE_DPI / 100;
     private boolean isScanned = true;
+    private int numberOfPages = 0;
+
 
 
     private String pdfFileDirectory;
@@ -71,9 +73,10 @@ public class PDFConverter {
         new File(resultFolder).mkdir();
         new File(resultFolderPDF).mkdir();
         new File(resultFolderIMG).mkdir();
-        this.isScanned = isScannedPDF();
+        initConstants();
 
         LOGGER.log(Level.INFO, String.format("PDFConverter for %s file initialized", absolutePath));
+//        System.out.println(String.format("PDFConverter for %s file initialized", absolutePath));
     }
 
     public void convert() {
@@ -84,7 +87,8 @@ public class PDFConverter {
         saveImagesAndText();
 
         Instant end = Instant.now();
-        LOGGER.log(Level.INFO, String.format("%n%n%n%nConversion time is %s ", Duration.between(start, end)));
+        LOGGER.log(Level.INFO, String.format("%nConversion time is %s ", Duration.between(start, end)));
+//        System.out.println(String.format("%nConversion time for %s is %s ", pdfFileName, Duration.between(start, end)));
 
     }
 
@@ -108,7 +112,7 @@ public class PDFConverter {
             int pageNumber = 1;
             while (splitter.hasMorePages()) {
                 splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
-                if (pageNumber % MESSAGE_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
+                if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
 
                 pageNumber++;
             }
@@ -134,7 +138,7 @@ public class PDFConverter {
 
                     textPages.put(pageNumber, result);
 
-                    if (pageNumber % MESSAGE_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
+                    if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
                 } catch (IOException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);
                 } finally {
                     try {
@@ -262,7 +266,7 @@ public class PDFConverter {
 
             textPages.put(pageNumber, filteredResult);
 
-            if (pageNumber % MESSAGE_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
+            if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
         } catch (TesseractException e) {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
         }
@@ -289,7 +293,7 @@ public class PDFConverter {
 
         ImageIOUtil.writeImage(dimg, IMAGE_FORMAT, output, IMAGE_DPI, IMAGE_COMPRESSION);
         g2d.dispose();
-        if (pageNumber % MESSAGE_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
+        if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
 
     }
 
@@ -321,23 +325,27 @@ public class PDFConverter {
     public boolean saveBookmarks() {
         try (PDDocument document = PDDocument.load(file)) {
             PDDocumentOutline outline = document.getDocumentCatalog().getDocumentOutline();
-            if (outline == null) {
-                LOGGER.log(Level.INFO, "PDF file does not have Bookmarks");
-                return false;
-            } else {
-                try (PrintWriter bookmarkWriter = new PrintWriter(resultFolder + "Bookmarks.html")) {
-                    LOGGER.log(Level.INFO, String.format("%sBookmarks.html created", resultFolder));
+            try (PrintWriter bookmarkWriter = new PrintWriter(resultFolder + "Bookmarks.html")) {
 
+                LOGGER.log(Level.INFO, String.format("%sBookmarks.html created", resultFolder));
+                initializeBookmarkHTMLDocument(bookmarkWriter);
+
+                if (outline == null) {
+
+                    LOGGER.log(Level.INFO, "PDF file does not have Bookmarks, writing pagelist");
+                    writePageList(bookmarkWriter);
+                    return false;
+
+                } else {
                     //writing to HTML
-                    initializeBookmarkHTMLDocument(bookmarkWriter);
+                    LOGGER.log(Level.INFO, "writing bookmarks");
+                    writeBookmark(outline, "", document, bookmarkWriter);
 
-                    LOGGER.log(Level.INFO, "printing bookmarks");
-                    printBookmark(outline, "", document, bookmarkWriter);
+                }
 
-                    terminateBookmarkHTMLDocument(bookmarkWriter);
+                terminateBookmarkHTMLDocument(bookmarkWriter);
 
-                } catch (IOException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);}
-            }
+            } catch (IOException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);}
         } catch (Exception e) {LOGGER.log(Level.SEVERE, "Exception occur", e);}
 
         LOGGER.log(Level.INFO, "Bookmarks saved");
@@ -345,15 +353,19 @@ public class PDFConverter {
     }
 
 
+
     private void initializeBookmarkHTMLDocument(PrintWriter bookmarkWriter) {
         bookmarkWriter.print("<HTML>\n" +
                 "<HEAD>\n" +
-                "<TITLE>Bookmarks</TITLE>\n" +
+                "<TITLE>"+ pdfFileName+"</TITLE>\n" +
                 "<style>\n" +
                 "        table {\n" +
                 "            border-collapse: collapse;\n" +
                 "            margin-left:auto; \n" +
                 "            margin-right:auto;" +
+                "        }\n" +
+                "        h1 {\n" +
+                "            text-align: center" +
                 "        }\n" +
                 "        th, td {\n" +
                 "            padding: 0.25rem;\n" +
@@ -366,7 +378,9 @@ public class PDFConverter {
                 "    </style>" +
                 "</HEAD>\n" +
                 "\n" +
-                "<HR>\n<table>");
+                "<HR>\n" +
+                "<H1>"+pdfFileName.substring(0, pdfFileName.indexOf(".pdf"))+"</H1>"+
+                "<table>");
     }
 
     private void terminateBookmarkHTMLDocument(PrintWriter bookmarkWriter) {
@@ -375,7 +389,17 @@ public class PDFConverter {
                 "</HTML>");
     }
 
-    public void printBookmark(PDOutlineNode bookmark, String indentation, PDDocument document, PrintWriter bookmarkWriter) throws IOException {
+    private void writePageList(PrintWriter bookmarkWriter) {
+        for (int pageNumber = 1; pageNumber <=numberOfPages; pageNumber++) {
+
+            bookmarkWriter.print("<tr><td>page : " + pageNumber + " </td>");
+            bookmarkWriter.print("<td><a href=\"PDF\\" + pageNumber + ".pdf\">PDF</a>&ensp;");
+            bookmarkWriter.print("<a href=\"IMG\\" + pageNumber + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
+
+        }
+    }
+
+    public void writeBookmark(PDOutlineNode bookmark, String indentation, PDDocument document, PrintWriter bookmarkWriter) throws IOException {
         PDOutlineItem current = bookmark.getFirstChild();
         while (current != null) {
             PDPage currentPage = current.findDestinationPage(document);
@@ -386,42 +410,30 @@ public class PDFConverter {
             bookmarkWriter.print("<td><a href=\"PDF\\" + pageNumber + ".pdf\">PDF</a>&ensp;");
             bookmarkWriter.print("<a href=\"IMG\\" + pageNumber + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
 
-            printBookmark(current, indentation + "&ensp;&ensp;&ensp;", document, bookmarkWriter);
+            writeBookmark(current, indentation + "&ensp;&ensp;&ensp;", document, bookmarkWriter);
             current = current.getNextSibling();
         }
     }
 
-    public int getNumberOfPages() {
 
-        int docPagesSize = 0;
-
-        try (PDDocument document = PDDocument.load(file)) {
-
-            docPagesSize = document.getNumberOfPages();
-
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Exception occur", e);
-        }
-        return docPagesSize;
-    }
-
-    public boolean isScannedPDF() {
+    public void initConstants() {
         try (PDDocument doc = PDDocument.load(file)) {
 
             PDFTextStripper pdfTextStripper = new PDFTextStripper();
             pdfTextStripper.setEndPage(3);
-            return pdfTextStripper.getText(doc).trim().length() == 0;
+            this.isScanned = pdfTextStripper.getText(doc).trim().length() == 0;
+            this.numberOfPages = doc.getNumberOfPages();
 
         } catch (IOException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);}
-
-        return true;
     }
+
+    public boolean isScanned() {return isScanned;}
+
+    public int getNumberOfPages() {return numberOfPages;}
 
     public String getPdfFileName() { return pdfFileName; }
 
-    public String getResultFolderIMG() {
-        return resultFolderIMG;
-    }
+    public String getResultFolderIMG() {return resultFolderIMG;}
 
     public String getResultFolderPDF() { return resultFolderPDF; }
 
