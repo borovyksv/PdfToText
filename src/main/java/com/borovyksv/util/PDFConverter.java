@@ -8,6 +8,12 @@ import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.interactive.action.PDAction;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
@@ -39,7 +45,7 @@ import java.util.regex.Pattern;
 public class PDFConverter {
     private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
     private static final int N_THREADS = 10;
-    public static final int MESSAGES_TO_LOG = 10;
+    public static final int MESSAGES_TO_LOG = 100;
 
     private int IMAGE_DPI = 300;
     private float IMAGE_COMPRESSION = 0.7f;
@@ -76,7 +82,6 @@ public class PDFConverter {
         initConstants();
 
         LOGGER.log(Level.INFO, String.format("PDFConverter for %s file initialized", absolutePath));
-//        System.out.println(String.format("PDFConverter for %s file initialized", absolutePath));
     }
 
     public void convert() {
@@ -88,7 +93,6 @@ public class PDFConverter {
 
         Instant end = Instant.now();
         LOGGER.log(Level.INFO, String.format("%nConversion time is %s ", Duration.between(start, end)));
-//        System.out.println(String.format("%nConversion time for %s is %s ", pdfFileName, Duration.between(start, end)));
 
     }
 
@@ -120,6 +124,35 @@ public class PDFConverter {
         } finally {if (reader != null) {reader.close();}}
     }
 
+    private void processAnnotations(PDPage imported) throws IOException
+    {
+        java.util.List<PDAnnotation> annotations = imported.getAnnotations();
+        for (PDAnnotation annotation : annotations)
+        {
+            if (annotation instanceof PDAnnotationLink)
+            {
+                PDAnnotationLink link = (PDAnnotationLink)annotation;
+                PDDestination destination = link.getDestination();
+                if (destination == null && link.getAction() != null)
+                {
+                    PDAction action = link.getAction();
+                    if (action instanceof PDActionGoTo)
+                    {
+                        destination = ((PDActionGoTo)action).getDestination();
+                    }
+                }
+                if (destination instanceof PDPageDestination)
+                {
+                    ((PDPageDestination) destination).setPage(null);
+                }
+            }
+            else
+            {
+                annotation.setPage(null);
+            }
+        }
+    }
+
 
     public void saveText() {
         try (PDDocument doc = PDDocument.load(file)) {
@@ -132,9 +165,11 @@ public class PDFConverter {
                 try {
                     int pageNumber = counter++;
 
-                    String result = new PDFTextStripper().getText(page);
+                    String extract = new PDFTextStripper().getText(page);
 
-                    result += getTextMark();
+                    String textMark = getTextMark();
+
+                    String result =  textMark + extract;
 
                     textPages.put(pageNumber, result);
 
@@ -195,8 +230,8 @@ public class PDFConverter {
     }
 
     /**
-    * This method combines two processes within,
-    * to save resources (BufferedImage.class) needed for execution
+    * This method combines two another methods (@saveTextFromScannedPDF() and @saveImage()) within,
+    * to optimize resource consuming (BufferedImage.class) needed for execution
     * */
     private void saveImagesAndTextFromScannedPDF() {
 
