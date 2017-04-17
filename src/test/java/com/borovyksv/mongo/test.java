@@ -1,3 +1,5 @@
+package com.borovyksv.mongo;
+
 import com.borovyksv.util.PDFConverter;
 import com.borovyksv.util.PDFConverterFactory;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -18,7 +20,7 @@ public class test {
         PDFConverter converter = PDFConverterFactory.newPDFConverter("D:\\pdf\\original\\.camel\\Новая папка\\Service Manual Acura.pdf");
         Instant start = Instant.now();
 
-        converter.savePagesPDFBOX();
+//        converter.savePagesPDFBOX();
 
         Instant end = Instant.now();
         System.out.println(Duration.between(start, end));
