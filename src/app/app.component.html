@@ -1,9 +1,11 @@
 <h1>
   <div>
-    <h3>Posts:</h3>
-    <div>
-      <p>{{page?.id}}</p>
-      <p>{{page?.text}}</p>
+    <h3>Documents:</h3>
+    <div *ngFor="let document of documents">
+      <h4>{{document.docName}}</h4>
+      <p>{{document.pagesProgress}}</p>
+      <p>{{document.imagesProgress}}</p>
+      <p>{{document.textProgress}}</p>
     </div>
   </div>
 </h1>

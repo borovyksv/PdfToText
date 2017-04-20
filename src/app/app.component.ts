@@ -1,24 +1,26 @@
 import {Component} from '@angular/core';
-import {PostsService} from './posts.service'
+import {DocumentService} from './documents.service'
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
-  providers: [PostsService]
+  providers: [DocumentService]
 })
 export class AppComponent {
   title = 'app works!';
-  page: Page;
+  documents: Document[];
 
-  constructor(private postsService:PostsService) {
-    this.postsService.getPage().subscribe(page => {
-      console.log(page);
-      this.page = page;
+  constructor(private documentService:DocumentService) {
+    this.documentService.getDocuments().subscribe(documents => {
+      this.documents = documents;
     })
   }
 }
 
-export class Page{
+export class Document{
+  docName: string;
   id: number;
-  text: string;
+  imagesProgress: number;
+  pagesProgress: number;
+  textProgress: number;
 }
