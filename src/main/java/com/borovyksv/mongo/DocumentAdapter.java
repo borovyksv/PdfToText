@@ -1,5 +1,8 @@
 package com.borovyksv.mongo;
 
+import com.borovyksv.mongo.pojo.Document;
+import com.borovyksv.mongo.pojo.Page;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

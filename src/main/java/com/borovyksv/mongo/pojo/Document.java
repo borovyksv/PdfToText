@@ -1,4 +1,4 @@
-package com.borovyksv.mongo;
+package com.borovyksv.mongo.pojo;
 
 import org.springframework.data.annotation.Id;
 

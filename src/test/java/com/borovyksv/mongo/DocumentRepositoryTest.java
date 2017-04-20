@@ -15,6 +15,9 @@ package com.borovyksv.mongo;
  * limitations under the License.
  */
 
+import com.borovyksv.mongo.pojo.Document;
+import com.borovyksv.mongo.pojo.Page;
+import com.borovyksv.mongo.repository.DocumentRepository;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;

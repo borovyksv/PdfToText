@@ -1,5 +1,7 @@
 package com.borovyksv.util;
 
+import com.borovyksv.mongo.observer.Observable;
+import com.borovyksv.mongo.observer.Observer;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.util.SmartPdfSplitter;
@@ -8,12 +10,6 @@ import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.interactive.action.PDAction;
-import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
-import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
-import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
-import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
-import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
@@ -30,6 +26,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,10 +39,18 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class PDFConverter {
+public class PDFConverter implements Observable{
     private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
     private static final int N_THREADS = 10;
-    public static final int MESSAGES_TO_LOG = 100;
+    private static final int MESSAGES_TO_LOG = 100;
+    private static final int PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS = 5;
+
+    private java.util.List<Observer<PDFConverter>> observers = new ArrayList<>();
+
+
+    private int pagesProgress;
+    private int imagesProgress;
+    private int textProgress;
 
     private int IMAGE_DPI = 300;
     private float IMAGE_COMPRESSION = 0.7f;
@@ -53,6 +58,7 @@ public class PDFConverter {
     private int DIMENSIONS_DIVIDER = IMAGE_DPI / 100;
     private boolean isScanned = true;
     private int numberOfPages = 0;
+    private int numberOfPagesToNotifyObervers = 0;
 
 
 
@@ -116,41 +122,18 @@ public class PDFConverter {
             int pageNumber = 1;
             while (splitter.hasMorePages()) {
                 splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
+
+                // percent(%) of converted pages
+                pagesProgress = 100*pageNumber/numberOfPages;
+
+                if (isNotifiable(pageNumber)) notifyAllObservers();
+
                 if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.pdf saved", pageNumber));
 
                 pageNumber++;
             }
         } catch (IOException | DocumentException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);
         } finally {if (reader != null) {reader.close();}}
-    }
-
-    private void processAnnotations(PDPage imported) throws IOException
-    {
-        java.util.List<PDAnnotation> annotations = imported.getAnnotations();
-        for (PDAnnotation annotation : annotations)
-        {
-            if (annotation instanceof PDAnnotationLink)
-            {
-                PDAnnotationLink link = (PDAnnotationLink)annotation;
-                PDDestination destination = link.getDestination();
-                if (destination == null && link.getAction() != null)
-                {
-                    PDAction action = link.getAction();
-                    if (action instanceof PDActionGoTo)
-                    {
-                        destination = ((PDActionGoTo)action).getDestination();
-                    }
-                }
-                if (destination instanceof PDPageDestination)
-                {
-                    ((PDPageDestination) destination).setPage(null);
-                }
-            }
-            else
-            {
-                annotation.setPage(null);
-            }
-        }
     }
 
 
@@ -173,6 +156,11 @@ public class PDFConverter {
 
                     textPages.put(pageNumber, result);
 
+                    // percent(%) of converted text pages
+                    textProgress = 100*pageNumber/numberOfPages;
+
+                    if (isNotifiable(pageNumber)) notifyAllObservers();
+
                     if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
                 } catch (IOException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);
                 } finally {
@@ -187,7 +175,8 @@ public class PDFConverter {
     }
 
 
-    public void saveImages() {
+
+  public void saveImages() {
 
         int numberOfPages = getNumberOfPages();
 
@@ -207,13 +196,18 @@ public class PDFConverter {
                     executorService.execute(() -> {
                         try {
 
-                            int currentPage = counter.getAndIncrement();
+                            int pageNumber = counter.getAndIncrement();
 
-                            BufferedImage image = getImage(pdfRenderer, currentPage);
+                            BufferedImage image = getImage(pdfRenderer, pageNumber);
 
-                            saveImage(currentPage, image);
+                            saveImage(pageNumber, image);
 
                             image.flush();
+
+                            // percent(%) of converted images
+                            imagesProgress = 100*pageNumber/numberOfPages;
+
+                            if (isNotifiable(pageNumber)) notifyAllObservers();
 
                         } catch (Exception e) {
                             LOGGER.log(Level.SEVERE, "Exception occur", e);
@@ -254,15 +248,20 @@ public class PDFConverter {
                 for (int i = startPage; i <= endPage; i++) {
                     executorService.execute(() -> {
                         try {
-                            int currentPage = counter.getAndIncrement();
+                            int pageNumber = counter.getAndIncrement();
 
-                            BufferedImage image = getImage(pdfRenderer, currentPage);
+                            BufferedImage image = getImage(pdfRenderer, pageNumber);
 
-                            saveTextFromScannedPDF(currentPage, image);
+                            saveTextFromScannedPDF(pageNumber, image);
 
-                            saveImage(currentPage, image);
+                            saveImage(pageNumber, image);
 
                             image.flush();
+
+                            // percent(%) of converted images and text pages
+                            imagesProgress = textProgress = 100*pageNumber/numberOfPages;
+
+                            if (isNotifiable(pageNumber)) notifyAllObservers();
 
                         } catch (Exception e) {
                             LOGGER.log(Level.SEVERE, "Exception occur", e);
@@ -340,7 +339,7 @@ public class PDFConverter {
 
         //Filter short lines from garbage
         StringBuilder sb = new StringBuilder();
-        sb.append(getTextMark());
+        sb.append(getTextMark()).append("\n");
         for (String s : input.split("\n")) {
             Matcher m = Pattern.compile("[=;:_\\-/\\\\\"'@~!+,\\|\\.1%\\*\\$]").matcher(s);
             int matches = 0;
@@ -458,6 +457,8 @@ public class PDFConverter {
             pdfTextStripper.setEndPage(3);
             this.isScanned = pdfTextStripper.getText(doc).trim().length() == 0;
             this.numberOfPages = doc.getNumberOfPages();
+            this.numberOfPagesToNotifyObervers = (int) (numberOfPages * (double) PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS / 100);
+
 
         } catch (IOException e) {LOGGER.log(Level.SEVERE, "Exception occur", e);}
     }
@@ -476,8 +477,29 @@ public class PDFConverter {
         return resultFolder;
     }
 
-    public Map<Integer, String> getTextPages() {
-        return Collections.unmodifiableMap(textPages);
+    public Map<Integer, String> getTextPages() {return Collections.unmodifiableMap(textPages);}
+
+    //
+    private boolean isNotifiable(int pageNumber) {
+      return pageNumber%numberOfPagesToNotifyObervers==0;
     }
 
+
+  @Override
+  public void addObserver(Observer observer) {
+    this.observers.add(observer);
+  }
+
+  @Override
+  public void notifyAllObservers() {
+    for (Observer observer : observers) {
+      observer.update(this);
+    }
+  }
+
+  public int getTextProgress() {return textProgress;}
+
+  public int getPagesProgress() {return pagesProgress;}
+
+  public int getImagesProgress() {return imagesProgress;}
 }

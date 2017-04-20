@@ -2,7 +2,7 @@ package com.borovyksv.camel.route;
 
 import com.borovyksv.camel.processor.PDFProcessor;
 import com.borovyksv.camel.processor.ZipProcessor;
-import com.borovyksv.mongo.DocumentRepository;
+import com.borovyksv.mongo.repository.DocumentRepository;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

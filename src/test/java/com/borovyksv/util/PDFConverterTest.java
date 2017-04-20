@@ -1,8 +1,10 @@
 package com.borovyksv.util;
 
+import com.borovyksv.mongo.observer.Observer;
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -84,6 +86,23 @@ public class PDFConverterTest {
     @Test
     public void testIsScannedPDF(){
         assertEquals(true, converter.isScanned());
+    }
+
+    @Ignore //just for testing with hardcoded PDF with 100+ pages
+    @Test
+    public void testObserver(){
+      PDFConverter converter = PDFConverterFactory.newPDFConverter("D:\\pdf\\original\\.camel\\Новая папка (2)\\2017-gmc-duramax-diesel-manual.pdf");
+      converter.addObserver(new Observer<PDFConverter>() {
+        @Override
+        public void update(PDFConverter converter) {
+          System.out.println(String.format(
+            "Progress pages: %d, images: %d, text: %d",
+            converter.getPagesProgress(),
+            converter.getImagesProgress(),
+            converter.getTextProgress()));
+        }
+      });
+      converter.convert();
     }
 
 

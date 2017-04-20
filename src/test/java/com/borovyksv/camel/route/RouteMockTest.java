@@ -1,8 +1,8 @@
 package com.borovyksv.camel.route;
 
-import com.borovyksv.mongo.Document;
-import com.borovyksv.mongo.DocumentRepository;
-import com.borovyksv.mongo.Page;
+import com.borovyksv.mongo.pojo.Document;
+import com.borovyksv.mongo.repository.DocumentRepository;
+import com.borovyksv.mongo.pojo.Page;
 import org.apache.camel.Exchange;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
