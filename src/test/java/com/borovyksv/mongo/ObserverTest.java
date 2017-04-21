@@ -33,9 +33,9 @@ public class ObserverTest {
   @Autowired
   ProgressStatusRepository repository;
 
-  @Ignore
+  @Ignore //to prevent endless execution
   @Test
-  public void setsIdOnSave() throws InterruptedException {
+  public void findAllEveryTwoSecondsTest() throws InterruptedException {
     for (int i = 0; i < 100; i++) {
       repository.findAll().forEach(System.out::println);
       TimeUnit.SECONDS.sleep(2);

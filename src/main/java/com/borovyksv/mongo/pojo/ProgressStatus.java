@@ -2,6 +2,8 @@ package com.borovyksv.mongo.pojo;
 
 import org.springframework.data.annotation.Id;
 
+import java.util.List;
+
 public class ProgressStatus {
   @Id
   public String id;
@@ -10,6 +12,8 @@ public class ProgressStatus {
   public Integer pagesProgress;
   public Integer imagesProgress;
   public Integer textProgress;
+
+  public List<String> errors;
 
   public ProgressStatus() {
   }
@@ -23,6 +27,14 @@ public class ProgressStatus {
 
   public ProgressStatus(String docName) {
     this.docName = docName;
+  }
+
+  public List<String> getErrors() {
+    return errors;
+  }
+
+  public void setErrors(List<String> errorMessage) {
+    this.errors = errorMessage;
   }
 
   public String getId() {

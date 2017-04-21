@@ -43,13 +43,11 @@ public class ZipProcessor implements Processor {
             zipParameters.setIncludeRootFolder(false);
             zipFile.addFolder(source, zipParameters);
 
-        } catch (ZipException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (ZipException | IOException e) {
             e.printStackTrace();
         }
 
-        return zipFile;
+      return zipFile;
     }
 
 

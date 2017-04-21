@@ -1,6 +1,8 @@
 package com.borovyksv.controller;
 
+import com.borovyksv.mongo.pojo.ConvertedDocument;
 import com.borovyksv.mongo.pojo.ProgressStatus;
+import com.borovyksv.mongo.repository.ConvertedDocumentRepository;
 import com.borovyksv.mongo.repository.ProgressStatusRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,10 +16,17 @@ public class MainController {
 
   @Autowired
   ProgressStatusRepository progressStatusRepository;
+  @Autowired
+  ConvertedDocumentRepository convertedDocumentRepository;
 
 
-  @RequestMapping(value = "/documents", method = RequestMethod.GET)
-  public List<ProgressStatus> documents() {
+  @RequestMapping(value = "/documents/progress", method = RequestMethod.GET)
+  public List<ProgressStatus> progressStatus() {
     return progressStatusRepository.findAll();
+  }
+
+  @RequestMapping(value = "/documents/converted", method = RequestMethod.GET)
+  public List<ConvertedDocument> convertedDocuments() {
+    return convertedDocumentRepository.findAll();
   }
 }

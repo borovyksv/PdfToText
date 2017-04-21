@@ -1,14 +1,13 @@
 package com.borovyksv.camel.processor;
 
-import com.borovyksv.mongo.pojo.Document;
+import com.borovyksv.mongo.observer.*;
+import com.borovyksv.mongo.pojo.DocumentWithTextPages;
 import com.borovyksv.mongo.DocumentAdapter;
 import com.borovyksv.mongo.pojo.ProgressStatus;
+import com.borovyksv.mongo.repository.ConvertedDocumentRepository;
 import com.borovyksv.mongo.repository.ProgressStatusRepository;
 import com.borovyksv.util.PDFConverter;
 import com.borovyksv.util.PDFConverterFactory;
-import com.borovyksv.mongo.observer.ImageProcessObserver;
-import com.borovyksv.mongo.observer.PagesProcessObserver;
-import com.borovyksv.mongo.observer.TextProcessObserver;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
@@ -23,6 +22,8 @@ import java.util.logging.Logger;
 public class PDFProcessor implements Processor {
   @Autowired
   ProgressStatusRepository progressStatusRepository;
+  @Autowired
+  ConvertedDocumentRepository convertedDocumentRepository;
 
   private static final Logger LOGGER = Logger.getLogger(PDFProcessor.class.getName());
 
@@ -51,12 +52,14 @@ public class PDFProcessor implements Processor {
     converter.addObserver(new PagesProcessObserver(progressStatusRepository, progressStatus));
     converter.addObserver(new ImageProcessObserver(progressStatusRepository, progressStatus));
     converter.addObserver(new TextProcessObserver(progressStatusRepository, progressStatus));
+    converter.addObserver(new ErrorsObserver(progressStatusRepository, progressStatus));
+    converter.addObserver(new IsSuccessfulObserver(progressStatusRepository, convertedDocumentRepository, progressStatus));
 
   }
 
   private void sendTextPagesToDBRoute(String toRoute, Exchange exchange, String fileName, PDFConverter converter) {
     Map<Integer, String> textPages = converter.getTextPages();
-    Document document = DocumentAdapter.getDocumentFromMap(fileName, textPages);
+    DocumentWithTextPages document = DocumentAdapter.getDocumentFromMap(fileName, textPages);
 
     ProducerTemplate template = exchange.getContext().createProducerTemplate();
     template.sendBody(toRoute, document);

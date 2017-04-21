@@ -1,5 +1,7 @@
 import {Component} from '@angular/core';
 import {DocumentService} from './documents.service'
+import {Observable} from 'rxjs/Rx';
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -7,12 +9,18 @@ import {DocumentService} from './documents.service'
   providers: [DocumentService]
 })
 export class AppComponent {
-  title = 'app works!';
   documents: Document[];
+  converted: Converted[];
 
   constructor(private documentService:DocumentService) {
-    this.documentService.getDocuments().subscribe(documents => {
-      this.documents = documents;
+    Observable.interval(2000).subscribe(x => {
+      this.documentService.getDocumentsProgress().subscribe(documents => {
+        return this.documents = documents;
+      });
+      this.documentService.getConvertedDocuments().subscribe(converted => {
+        return this.converted = converted;
+      });
+
     })
   }
 }
@@ -23,4 +31,11 @@ export class Document{
   imagesProgress: number;
   pagesProgress: number;
   textProgress: number;
+  errors: Array<string>;
+}
+
+export class Converted{
+  id: string;
+  name: string;
+  numberOfPages: number
 }

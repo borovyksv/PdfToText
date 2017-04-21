@@ -9,8 +9,13 @@ export class DocumentService{
     console.log('Document service initialized...')
   }
 
-  getDocuments(){
-    return this.http.get('http://localhost:8080/documents')
+  getDocumentsProgress(){
+    return this.http.get('http://localhost:8080/documents/progress')
+      .map((res:Response)=>res.json());
+  }
+  
+  getConvertedDocuments(){
+    return this.http.get('http://localhost:8080/documents/converted')
       .map((res:Response)=>res.json());
   }
 

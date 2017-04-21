@@ -1,7 +1,7 @@
 package com.borovyksv.camel.route;
 
-import com.borovyksv.mongo.pojo.Document;
-import com.borovyksv.mongo.repository.DocumentRepository;
+import com.borovyksv.mongo.pojo.DocumentWithTextPages;
+import com.borovyksv.mongo.repository.DocumentWithTextPagesRepository;
 import com.borovyksv.mongo.pojo.Page;
 import org.apache.camel.Exchange;
 import org.apache.camel.RoutesBuilder;
@@ -21,70 +21,70 @@ import java.util.concurrent.TimeUnit;
 @SpringBootTest
 public class RouteMockTest extends CamelTestSupport {
 
-    @Autowired
-    DocumentRepository repository;
+  @Autowired
+  DocumentWithTextPagesRepository repository;
 
-    @Override
-    protected RoutesBuilder createRouteBuilder() throws Exception {
-        return new RouteBuilder() {
-            @Override
-            public void configure() throws Exception {
-                from("file:filterStart")
-                        .log("Received ${header.CamelFileName} from file:filterStart")
-                        .filter(header("CamelFileName").endsWith(".pdf"))
-                        .to("mock:fileFilterEndPoint");
+  @Override
+  protected RoutesBuilder createRouteBuilder() throws Exception {
+    return new RouteBuilder() {
+      @Override
+      public void configure() throws Exception {
+        from("file:filterStart")
+          .log("Received ${header.CamelFileName} from file:filterStart")
+          .filter(header("CamelFileName").endsWith(".pdf"))
+          .to("mock:fileFilterEndPoint");
 
-                from("file:start")
-                        .log("Received ${header.CamelFileName} from file:start")
-                        .process(exchange -> exchange.getOut().setBody(exchange.getIn().getBody().toString().replace(".pdf", ".zip"))) //convert PDF to Zip
-                        .log("Sent ${body} to mock:fileEndPoint")
-                        .to("mock:fileEndPoint");
+        from("file:start")
+          .log("Received ${header.CamelFileName} from file:start")
+          .process(exchange -> exchange.getOut().setBody(exchange.getIn().getBody().toString().replace(".pdf", ".zip"))) //convert PDF to Zip
+          .log("Sent ${body} to mock:fileEndPoint")
+          .to("mock:fileEndPoint");
 
-                from("direct:database")
-                        .log("Saving ${body} to DB")
-                        .bean(repository, "save")
-                        .to("mock:dbEndpoint");
-            }
-        };
-    }
+        from("direct:database")
+          .log("Saving ${body} to DB")
+          .bean(repository, "save")
+          .to("mock:dbEndpoint");
+      }
+    };
+  }
 
-    @Test
-    public void testFileConvertingFromPDFtoZIP() throws InterruptedException {
-        MockEndpoint mock = getMockEndpoint("mock:fileEndPoint");
-        mock.expectedBodiesReceived("GenericFile[hello.zip]");
+  @Test
+  public void testFileConvertingFromPDFtoZIP() throws InterruptedException {
+    MockEndpoint mock = getMockEndpoint("mock:fileEndPoint");
+    mock.expectedBodiesReceived("GenericFile[hello.zip]");
 
-        template.sendBodyAndHeader("file:start", "Hello World", Exchange.FILE_NAME, "hello.pdf");
+    template.sendBodyAndHeader("file:start", "Hello World", Exchange.FILE_NAME, "hello.pdf");
 
-        mock.assertIsSatisfied();
-    }
-    @Test
-    public void testRouteFilterNoPDFFiles() throws InterruptedException {
-        MockEndpoint mock = getMockEndpoint("mock:fileFilterEndPoint");
-        mock.expectedMessageCount(0);
+    mock.assertIsSatisfied();
+  }
+  @Test
+  public void testRouteFilterNoPDFFiles() throws InterruptedException {
+    MockEndpoint mock = getMockEndpoint("mock:fileFilterEndPoint");
+    mock.expectedMessageCount(0);
 
-        template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.txt");
-        template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.txt");
-        template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.zip");
-        template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.zip");
-        template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.jpg");
-        template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.png");
-        mock.assertIsSatisfied();
-    }
+    template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.txt");
+    template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.txt");
+    template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.zip");
+    template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.zip");
+    template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.jpg");
+    template.sendBodyAndHeader("file:filterStart", "Hello World", Exchange.FILE_NAME, "hello.png");
+    mock.assertIsSatisfied();
+  }
 
-    @Test
-    public void testRepositoryRoute() throws InterruptedException {
-        Document document = new Document(Arrays.asList(new Page(1, "1")), "Test");
+  @Test
+  public void testRepositoryRoute() throws InterruptedException {
+    DocumentWithTextPages document = new DocumentWithTextPages(Arrays.asList(new Page(1, "1")), "Test");
 
-        MockEndpoint mock = getMockEndpoint("mock:dbEndpoint");
+    MockEndpoint mock = getMockEndpoint("mock:dbEndpoint");
 
-        mock.expectedBodiesReceived(document);
-        mock.expectedMessageCount(1);
+    mock.expectedBodiesReceived(document);
+    mock.expectedMessageCount(1);
 
-        template.sendBody("direct:database", document);
+    template.sendBody("direct:database", document);
 
-        TimeUnit.SECONDS.sleep(2);
-        mock.assertIsSatisfied();
-    }
+    TimeUnit.SECONDS.sleep(2);
+    mock.assertIsSatisfied();
+  }
 
 
 }
