@@ -1,15 +1,12 @@
 package com.borovyksv.util;
 
 import com.borovyksv.mongo.observer.Observer;
-import org.apache.commons.io.FileUtils;
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -104,18 +101,4 @@ public class PDFConverterTest {
       });
       converter.convert();
     }
-
-
-
-
-
-    @AfterClass
-    public static void afterClass() {
-        try {
-            FileUtils.deleteDirectory(new File(PATH_TO_TEST_FOLDER + "/mock_parsed"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
 }

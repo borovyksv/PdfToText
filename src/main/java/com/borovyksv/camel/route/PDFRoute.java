@@ -20,7 +20,7 @@ public class PDFRoute extends RouteBuilder {
 
   @Override
   public void configure() throws Exception {
-    from("{{route.from}}?concurrentConsumers=3")
+    from("{{route.from}}?concurrentConsumers=2")
       .filter(header("CamelFileName").endsWith(".pdf"))                                   //filter PDF input
       .process(pdfProcessor).log("Sending ${header.CamelFileName} to Zip process")        //convert PDF to files
       .to("seda:convertedPdf");
