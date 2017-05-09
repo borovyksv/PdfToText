@@ -1,0 +1,13 @@
+version: '2.1'
+
+services:
+  mongodb:
+    image: mongo
+  spring-boot-jpa-docker-webapp:
+    image: borovyksv/pdf_to_text
+    depends_on:
+      - mongodb
+    ports:
+      - 8080:8080
+
+
