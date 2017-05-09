@@ -53,9 +53,9 @@ public class PDFConverter implements Observable{
   private int textProgress;
 
   private int IMAGE_DPI = 300;
-  private float IMAGE_COMPRESSION = 0.7f;
-  private String IMAGE_FORMAT = "jpg";
-  private int DIMENSIONS_DIVIDER = IMAGE_DPI / 100;
+  private float IMAGE_COMPRESSION = 0.8f;
+  private String IMAGE_FORMAT = "png";
+  private int DIMENSIONS_DIVIDER = 2;
   private boolean isScanned = true;
   private boolean isConverted;
 
@@ -216,9 +216,19 @@ public class PDFConverter implements Observable{
 
               int pageNumber = counter.getAndIncrement();
 
-              BufferedImage image = getImage(pdfRenderer, pageNumber);
+              BufferedImage image = null;
+                try {
 
-              saveImage(pageNumber, image);
+                  image = getImage(pdfRenderer, pageNumber);
+
+                  saveImage(pageNumber, image);
+
+                } catch (OutOfMemoryError oome) {
+
+                  if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
+                  preventOutOfMemoryError(pdfRenderer, executorService, pageNumber);
+
+                }
 
               image.flush();
 
@@ -238,6 +248,19 @@ public class PDFConverter implements Observable{
         LogErrorAndNotifyObservers(e);
       }
     }
+  }
+
+  private void preventOutOfMemoryError(PDFRenderer pdfRenderer, ExecutorService executorService, int pageNumber) {
+    executorService.execute(() -> {
+      try {
+
+        BufferedImage image = getImage(pdfRenderer, pageNumber);
+
+        saveImage(pageNumber, image);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    });
   }
 
   private int getProgressValue(int numberOfPages, int pageNumber, int currentValue) {
@@ -342,7 +365,7 @@ public class PDFConverter implements Observable{
     FileOutputStream output = new FileOutputStream(file);
 
     Image tmp = bim.getScaledInstance(bim.getWidth() / DIMENSIONS_DIVIDER, bim.getHeight() / DIMENSIONS_DIVIDER, Image.SCALE_SMOOTH);
-    BufferedImage dimg = new BufferedImage(bim.getWidth() / DIMENSIONS_DIVIDER, bim.getHeight() / DIMENSIONS_DIVIDER, BufferedImage.TYPE_INT_RGB);
+    BufferedImage dimg = new BufferedImage(bim.getWidth() / DIMENSIONS_DIVIDER, bim.getHeight() / DIMENSIONS_DIVIDER, BufferedImage.TYPE_BYTE_BINARY);
 
     Graphics2D g2d = dimg.createGraphics();
     g2d.drawImage(tmp, 0, 0, null);
