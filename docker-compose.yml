@@ -1,11 +1,14 @@
 mongodb:
   image: mongo
   container_name: mongo
+  volumes:
+    - /data/db/:/data/db/
 pdf_to_text:
   image: borovyksv/pdf_to_text
   links:
     - mongodb
   ports:
     - 8080:8080
-
-
+  volumes:
+    - /tmp/original:/tmp/original
+    - /tmp/copy:/tmp/copy

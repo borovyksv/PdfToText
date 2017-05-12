@@ -1,10 +1,18 @@
 #! /bin/bash
 
-set -e
+#create dir for input files
+mkdir -p /tmp/original
+#create dir for output files
+mkdir -p /tmp/copy
 
-docker-compose stop
-docker-compose rm -v --force
+#compile project
+mvn clean package
 
-mvn clean package docker:build
+#copy Dockerfile to compiled file and RUN
+cp Dockerfile target/
+cd target/
+docker build -t borovyksv/pdf_to_text .
 
+#run Docker-compose
+cd ..
 docker-compose up
