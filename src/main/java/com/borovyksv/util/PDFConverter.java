@@ -26,10 +26,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -198,6 +196,8 @@ public class PDFConverter implements Observable{
 
     int numberOfPages = getNumberOfPages();
 
+    java.util.List<Integer> pageNumberOfUnhandledImages = new ArrayList<>();
+
     for (int startPage = 1; startPage <= numberOfPages; startPage += 100) {
 
       // document must be reloaded every 100 pages to prevent memory leaks
@@ -224,13 +224,10 @@ public class PDFConverter implements Observable{
                   saveImage(pageNumber, image);
 
                 } catch (OutOfMemoryError oome) {
-
-                  if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
-                  preventOutOfMemoryError(pdfRenderer, executorService, pageNumber);
-
+                  LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
+                  pageNumberOfUnhandledImages.add(pageNumber);
                 }
 
-              image.flush();
 
               // percent(%) of converted images
               imagesProgress = getProgressValue(numberOfPages, pageNumber, imagesProgress);
@@ -248,19 +245,51 @@ public class PDFConverter implements Observable{
         LogErrorAndNotifyObservers(e);
       }
     }
+
+    if(pageNumberOfUnhandledImages.size()>0) saveUnhandledImages(pageNumberOfUnhandledImages);
   }
 
-  private void preventOutOfMemoryError(PDFRenderer pdfRenderer, ExecutorService executorService, int pageNumber) {
-    executorService.execute(() -> {
-      try {
+  private void saveUnhandledImages(java.util.List<Integer> pageNumberOfUnhandledImages) {
+    try (PDDocument document = PDDocument.load(file)) {
 
-        BufferedImage image = getImage(pdfRenderer, pageNumber);
+      PDFRenderer pdfRenderer = new PDFRenderer(document);
 
-        saveImage(pageNumber, image);
-      } catch (IOException e) {
-        e.printStackTrace();
+      ExecutorService executorService = Executors.newFixedThreadPool(N_THREADS);
+
+      for (Integer page: pageNumberOfUnhandledImages) {
+        executorService.execute(() -> {
+          try {
+
+            int pageNumber = page;
+            pageNumberOfUnhandledImages.remove(page);
+
+            BufferedImage image = null;
+
+            try {
+
+              image = getImage(pdfRenderer, pageNumber);
+
+              saveImage(pageNumber, image);
+
+            } catch (OutOfMemoryError oome) {
+              LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
+              pageNumberOfUnhandledImages.add(pageNumber);
+            }
+
+
+          } catch (Exception e) {
+            LogErrorAndNotifyObservers(e);
+          }
+        });
       }
-    });
+      executorService.shutdown();
+      executorService.awaitTermination(30, TimeUnit.MINUTES);
+
+    } catch (IOException | InterruptedException e) {
+      LogErrorAndNotifyObservers(e);
+    }
+
+    if(pageNumberOfUnhandledImages.size()>0) saveUnhandledImages(pageNumberOfUnhandledImages);
   }
 
   private int getProgressValue(int numberOfPages, int pageNumber, int currentValue) {
@@ -276,6 +305,8 @@ public class PDFConverter implements Observable{
   private void saveImagesAndTextFromScannedPDF() {
 
     int numberOfPages = getNumberOfPages();
+    java.util.List<Integer> pageNumberOfUnhandledImages = new ArrayList<>();
+
     LOGGER.log(Level.INFO, String.format("Starting OCR to %s ", pdfFileName));
 
 
@@ -296,13 +327,18 @@ public class PDFConverter implements Observable{
             try {
               int pageNumber = counter.getAndIncrement();
 
-              BufferedImage image = getImage(pdfRenderer, pageNumber);
+              BufferedImage image = null;
+              try {
+                image = getImage(pdfRenderer, pageNumber);
 
-              saveTextFromScannedPDF(pageNumber, image);
+                saveTextFromScannedPDF(pageNumber, image);
 
-              saveImage(pageNumber, image);
-
-              image.flush();
+                saveImage(pageNumber, image);
+              } catch (OutOfMemoryError oome) {
+                LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
+                pageNumberOfUnhandledImages.add(pageNumber);
+                image.flush();
+              }
 
               // percent(%) of converted images and text pages
               imagesProgress = textProgress = getProgressValue(numberOfPages, pageNumber, textProgress);
@@ -321,6 +357,52 @@ public class PDFConverter implements Observable{
         LogErrorAndNotifyObservers(e);
       }
     }
+    if(pageNumberOfUnhandledImages.size()>0) saveUnhandledImagesAndText(pageNumberOfUnhandledImages);
+
+  }
+
+  private void saveUnhandledImagesAndText(List<Integer> pageNumberOfUnhandledImages) {
+    try (PDDocument document = PDDocument.load(file)) {
+
+      PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+      ExecutorService executorService = Executors.newFixedThreadPool(N_THREADS);
+
+      for (Integer page: pageNumberOfUnhandledImages) {
+        executorService.execute(() -> {
+          try {
+
+            int pageNumber = page;
+            pageNumberOfUnhandledImages.remove(page);
+
+            BufferedImage image = null;
+
+            try {
+
+              image = getImage(pdfRenderer, pageNumber);
+
+              saveTextFromScannedPDF(pageNumber, image);
+
+              saveImage(pageNumber, image);
+
+            } catch (OutOfMemoryError oome) {
+              LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
+              pageNumberOfUnhandledImages.add(pageNumber);
+            }
+
+          } catch (Exception e) {
+            LogErrorAndNotifyObservers(e);
+          }
+        });
+      }
+      executorService.shutdown();
+      executorService.awaitTermination(30, TimeUnit.MINUTES);
+
+    } catch (IOException | InterruptedException e) {
+      LogErrorAndNotifyObservers(e);
+    }
+
+    if(pageNumberOfUnhandledImages.size()>0) saveUnhandledImages(pageNumberOfUnhandledImages);
   }
 
 //    private void saveTextToFile(int pageNumber, BufferedImage bufferedImage) {
