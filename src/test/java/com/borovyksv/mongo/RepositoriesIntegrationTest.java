@@ -19,6 +19,7 @@ import com.borovyksv.mongo.pojo.ConvertedDocument;
 import com.borovyksv.mongo.pojo.ProgressStatus;
 import com.borovyksv.mongo.repository.ConvertedDocumentRepository;
 import com.borovyksv.mongo.repository.ProgressStatusRepository;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-
+@Ignore
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class RepositoriesIntegrationTest {

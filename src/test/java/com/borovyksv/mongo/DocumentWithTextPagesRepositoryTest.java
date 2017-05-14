@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
+@Ignore
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class DocumentWithTextPagesRepositoryTest {

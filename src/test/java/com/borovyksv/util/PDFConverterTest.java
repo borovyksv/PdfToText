@@ -64,7 +64,7 @@ public class PDFConverterTest {
     @Test
     public void testFormatOfConvertedImages() {
         converter.savePages();
-        String expectedFormat = ".jpg";
+        String expectedFormat = ".png";
 
         String resultFileName = new File(converter.getResultFolderIMG()).listFiles()[0].getName();
         String resultFormat = resultFileName.substring(resultFileName.lastIndexOf('.'));
