@@ -1,4 +1,4 @@
-FROM frolvlad/alpine-oraclejdk8:slim
+FROM java:8
 VOLUME /tmp
 ADD pdf_to_text-1.0.jar app.jar
 RUN sh -c 'touch /app.jar'
