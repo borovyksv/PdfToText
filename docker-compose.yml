@@ -2,7 +2,7 @@ mongodb:
   image: mongo
   container_name: mongo
   volumes:
-    - var/lib/mongo/:/data/db/
+    - /data/db/:/data/db/
 pdf_to_text:
   image: borovyksv/pdf_to_text
   links:
