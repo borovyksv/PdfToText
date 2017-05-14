@@ -30,7 +30,7 @@ mkdir -p /tmp/copy
 cd $CurDir
 
 #compile project
-mvn clean package -DskipTests
+mvn clean package
 
 #copy Dockerfile to compiled file and RUN
 cp Dockerfile target/
