@@ -10,12 +10,12 @@ export class DocumentService{
   }
 
   getDocumentsProgress(){
-    return this.http.get('http://192.168.99.100:8080/documents/progress')
+    return this.http.get('http://localhost:8080/documents/progress')
       .map((res:Response)=>res.json());
   }
 
   getConvertedDocuments(){
-    return this.http.get('http://192.168.99.100:8080/documents/converted')
+    return this.http.get('http://localhost:8080/documents/converted')
       .map((res:Response)=>res.json());
   }
 

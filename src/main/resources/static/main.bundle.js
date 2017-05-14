@@ -172,11 +172,11 @@ var DocumentService = (function () {
         console.log('Document service initialized...');
     }
     DocumentService.prototype.getDocumentsProgress = function () {
-        return this.http.get('http://192.168.99.100:8080/documents/progress')
+        return this.http.get('http://localhost:8080/documents/progress')
             .map(function (res) { return res.json(); });
     };
     DocumentService.prototype.getConvertedDocuments = function () {
-        return this.http.get('http://192.168.99.100:8080/documents/converted')
+        return this.http.get('http://localhost:8080/documents/converted')
             .map(function (res) { return res.json(); });
     };
     DocumentService = __decorate([
