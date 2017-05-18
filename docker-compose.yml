@@ -1,6 +1,8 @@
 mongodb:
   image: mongo
   container_name: mongo
+  ports:
+      - 27017:27017
   volumes:
     - /data/db/:/data/db/
 pdf_to_text:
@@ -9,6 +11,7 @@ pdf_to_text:
     - mongodb
   ports:
     - 8080:8080
+    - 9010:9010
   volumes:
     - /tmp/original:/tmp/original
     - /tmp/copy:/tmp/copy

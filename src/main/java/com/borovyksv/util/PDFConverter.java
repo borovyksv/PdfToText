@@ -51,9 +51,9 @@ public class PDFConverter implements Observable{
   private int textProgress;
 
   private int IMAGE_DPI = 300;
-  private float IMAGE_COMPRESSION = 0.8f;
+  private float IMAGE_COMPRESSION = 1f;
   private String IMAGE_FORMAT = "png";
-  private int DIMENSIONS_DIVIDER = 2;
+  private int DIMENSIONS_DIVIDER = 1;
   private boolean isScanned = true;
   private boolean isConverted;
 
