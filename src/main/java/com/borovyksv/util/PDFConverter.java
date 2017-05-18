@@ -96,8 +96,8 @@ public class PDFConverter implements Observable{
 
     notifyAllObservers();
 
-    saveBookmarks();
-    savePages();
+    // saveBookmarks();
+    // savePages();
     saveImagesAndText();
 
     isConverted = isSuccessfullyConverted();
@@ -331,7 +331,7 @@ public class PDFConverter implements Observable{
               try {
                 image = getImage(pdfRenderer, pageNumber);
 
-                saveTextFromScannedPDF(pageNumber, image);
+                // saveTextFromScannedPDF(pageNumber, image);
 
                 saveImage(pageNumber, image);
               } catch (OutOfMemoryError oome) {

@@ -15,3 +15,5 @@ pdf_to_text:
   volumes:
     - /tmp/original:/tmp/original
     - /tmp/copy:/tmp/copy
+  environment:
+   - "JAVA_OPTS=-Xms2000m -Xmx2500m"
