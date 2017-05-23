@@ -15,8 +15,10 @@
 *.launch
 .settings/
 target/
+src/test/java/com/borovyksv/util/mock_parsed/
 
 # IDE - VSCode
+pdf_to_text.iml
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json

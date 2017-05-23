@@ -34,14 +34,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import static net.sourceforge.tess4j.ITessAPI.TessPageSegMode.PSM_AUTO_OSD;
 
 public class PDFConverter implements Observable{
   private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
   private static final int N_THREADS = 10;
-  private static final int MESSAGES_TO_LOG = 100;
+  private static final int MESSAGES_TO_LOG = 1;
   private static final int PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS = 5;
+  public static final String TESSERACT_DATAPATH_PARENT_FOLDER = "/usr/share/tesseract-ocr/4.00";
 
   private java.util.List<Observer<PDFConverter>> observers = new ArrayList<>();
   private java.util.List<String> errors = new ArrayList<>();
@@ -59,7 +60,7 @@ public class PDFConverter implements Observable{
 
 
   private int numberOfPages = 0;
-  private int numberOfPagesToNotifyObervers=0;
+  private int numberOfPagesToNotifyObservers =0;
 
 
 
@@ -96,8 +97,8 @@ public class PDFConverter implements Observable{
 
     notifyAllObservers();
 
-    // saveBookmarks();
-    // savePages();
+//    saveBookmarks();
+    savePages();
     saveImagesAndText();
 
     isConverted = isSuccessfullyConverted();
@@ -331,7 +332,7 @@ public class PDFConverter implements Observable{
               try {
                 image = getImage(pdfRenderer, pageNumber);
 
-                // saveTextFromScannedPDF(pageNumber, image);
+                saveTextFromScannedPDF(pageNumber, image);
 
                 saveImage(pageNumber, image);
               } catch (OutOfMemoryError oome) {
@@ -421,11 +422,14 @@ public class PDFConverter implements Observable{
 
   private void saveTextFromScannedPDF(int pageNumber, BufferedImage bufferedImage) {
     Tesseract tessInst = new Tesseract();
+    tessInst.setDatapath(TESSERACT_DATAPATH_PARENT_FOLDER);
+    tessInst.setPageSegMode(PSM_AUTO_OSD);
 
     try {
       String result = tessInst.doOCR(bufferedImage);
       String filteredResult = textFilter(result);
 
+      LOGGER.log(Level.INFO, result);
       textPages.put(pageNumber, filteredResult);
 
       if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
@@ -460,23 +464,24 @@ public class PDFConverter implements Observable{
   }
 
   private String textFilter(String input) {
-    String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
-    String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
-    //delete garbage from whole text
-    input = input.replaceAll(pattern, "");
-
-    //Filter short lines from garbage
-    StringBuilder sb = new StringBuilder();
-    sb.append(getTextMark()).append("\n");
-    for (String s : input.split("\n")) {
-      Matcher m = Pattern.compile("[=;:_\\-/\\\\\"'@~!+,\\|\\.1%\\*\\$]").matcher(s);
-      int matches = 0;
-      while (m.find()) matches++;
-      if (s.matches("^\\w{4,}[:\\.,]?$") || (matches < 3 && s.length() > 6) || s.length() > 20) {
-        sb.append(s).append("\n");
-      }
-    }
-    return sb.toString();
+//    String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
+//    String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
+//    //delete garbage from whole text
+//    input = input.replaceAll(pattern, "");
+//
+//    //Filter short lines from garbage
+//    StringBuilder sb = new StringBuilder();
+//    sb.append(getTextMark()).append("\n");
+//    for (String s : input.split("\n")) {
+//      Matcher m = Pattern.compile("[=;:_\\-/\\\\\"'@~!+,\\|\\.1%\\*\\$]").matcher(s);
+//      int matches = 0;
+//      while (m.find()) matches++;
+//      if (s.matches("^\\w{4,}[:\\.,]?$") || (matches < 3 && s.length() > 6) || s.length() > 20) {
+//        sb.append(s).append("\n");
+//      }
+//    }
+//    return sb.toString();
+    return input.replaceAll("\n", " ").replaceAll(" {3,}", "");
   }
 
   //converts fileName to indexable string
@@ -588,7 +593,7 @@ public class PDFConverter implements Observable{
       this.isScanned = pdfTextStripper.getText(doc).trim().length() == 0;
       this.numberOfPages = doc.getNumberOfPages();
       int toNotify = (int) (numberOfPages * (double) PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS / 100);
-      this.numberOfPagesToNotifyObervers = toNotify>0?toNotify:1;
+      this.numberOfPagesToNotifyObservers = toNotify>0?toNotify:1;
 
 
 
@@ -614,7 +619,7 @@ public class PDFConverter implements Observable{
 
   //
   private boolean isNotifiable(int pageNumber) {
-    return (pageNumber%numberOfPagesToNotifyObervers==0)||(pageNumber==numberOfPages);
+    return (pageNumber% numberOfPagesToNotifyObservers ==0)||(pageNumber==numberOfPages);
   }
 
   private void LogErrorAndNotifyObservers(Exception e) {
