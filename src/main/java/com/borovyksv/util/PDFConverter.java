@@ -2,9 +2,14 @@ package com.borovyksv.util;
 
 import com.borovyksv.mongo.observer.Observable;
 import com.borovyksv.mongo.observer.Observer;
+import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.pdf.PdfCopy;
+import com.itextpdf.text.pdf.PdfImportedPage;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.util.SmartPdfSplitter;
+import com.sun.pdfview.PDFFile;
+import com.sun.pdfview.PDFPage;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.multipdf.Splitter;
@@ -13,33 +18,33 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
-import org.apache.pdfbox.rendering.ImageType;
-import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.pdfbox.tools.imageio.ImageIOUtil;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 
 public class PDFConverter implements Observable{
   private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
-  private static final int N_THREADS = 10;
+  private static final int N_THREADS = 8;
   private static final int MESSAGES_TO_LOG = 5;
   private static final int PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS = 5;
+
 
   private java.util.List<Observer<PDFConverter>> observers = new ArrayList<>();
   private java.util.List<String> errors = new ArrayList<>();
@@ -118,7 +123,7 @@ public class PDFConverter implements Observable{
     LOGGER.log(Level.INFO, String.format("%s is %s pdf", pdfFileName, isScanned ? "scanned" : "text format"));
 
     if (isScanned) {
-      saveImagesAndTextFromScannedPDF();
+      this.saveImagesAndText(true);
     } else {
       saveImages();
       saveText();
@@ -130,10 +135,21 @@ public class PDFConverter implements Observable{
     PdfReader reader = null;
     try {
       reader = new PdfReader(pdfFileDirectory);
+      int numberOfPages = reader.getNumberOfPages();
       SmartPdfSplitter splitter = new SmartPdfSplitter(reader);
       int pageNumber = 1;
-      while (splitter.hasMorePages()) {
-        splitter.split(new FileOutputStream(resultFolderPDF + pageNumber + ".pdf"), 200000);
+      while (pageNumber<=numberOfPages) {
+        String outFile = resultFolderPDF + pageNumber + ".pdf";
+
+        Document document = new Document(reader.getPageSizeWithRotation(1));
+        PdfCopy writer = new PdfCopy(document, new FileOutputStream(outFile));
+        document.open();
+
+        PdfImportedPage page = writer.getImportedPage(reader, pageNumber);
+        writer.addPage(page);
+
+        document.close();
+        writer.close();
 
         // percent(%) of converted pages
         pagesProgress = getProgressValue(numberOfPages, pageNumber, pagesProgress);
@@ -191,104 +207,9 @@ public class PDFConverter implements Observable{
 
 
   public void saveImages() {
-
-    int numberOfPages = getNumberOfPages();
-
-    java.util.List<Integer> pageNumberOfUnhandledImages = new ArrayList<>();
-
-    for (int startPage = 1; startPage <= numberOfPages; startPage += 100) {
-
-      // document must be reloaded every 100 pages to prevent memory leaks
-      try (PDDocument document = PDDocument.load(file)) {
-        int endPage = (startPage + 99) < numberOfPages ? startPage + 99 : numberOfPages;
-
-        PDFRenderer pdfRenderer = new PDFRenderer(document);
-
-        AtomicInteger counter = new AtomicInteger(startPage);
-
-        ExecutorService executorService = Executors.newFixedThreadPool(N_THREADS);
-
-        for (int i = startPage; i <= endPage; i++) {
-          executorService.execute(() -> {
-            try {
-
-              int pageNumber = counter.getAndIncrement();
-
-              BufferedImage image = null;
-                try {
-
-                  image = getImage(pdfRenderer, pageNumber);
-
-                  saveImage(pageNumber, image);
-
-                } catch (OutOfMemoryError oome) {
-                  LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
-                  pageNumberOfUnhandledImages.add(pageNumber);
-                }
-
-
-              // percent(%) of converted images
-              imagesProgress = getProgressValue(numberOfPages, pageNumber, imagesProgress);
-              if (isNotifiable(pageNumber)) notifyAllObservers();
-
-            } catch (Exception e) {
-              LogErrorAndNotifyObservers(e);
-            }
-          });
-        }
-        executorService.shutdown();
-        executorService.awaitTermination(30, TimeUnit.MINUTES);
-
-      } catch (IOException | InterruptedException e) {
-        LogErrorAndNotifyObservers(e);
-      }
-    }
-
-    if(pageNumberOfUnhandledImages.size()>0) saveUnhandledImages(pageNumberOfUnhandledImages);
+      saveImagesAndText(false);
   }
 
-  private void saveUnhandledImages(java.util.List<Integer> pageNumberOfUnhandledImages) {
-    try (PDDocument document = PDDocument.load(file)) {
-
-      PDFRenderer pdfRenderer = new PDFRenderer(document);
-
-      ExecutorService executorService = Executors.newFixedThreadPool(N_THREADS);
-
-      for (Integer page: pageNumberOfUnhandledImages) {
-        executorService.execute(() -> {
-          try {
-
-            int pageNumber = page;
-            pageNumberOfUnhandledImages.remove(page);
-
-            BufferedImage image = null;
-
-            try {
-
-              image = getImage(pdfRenderer, pageNumber);
-
-              saveImage(pageNumber, image);
-
-            } catch (OutOfMemoryError oome) {
-              LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
-              pageNumberOfUnhandledImages.add(pageNumber);
-            }
-
-
-          } catch (Exception e) {
-            LogErrorAndNotifyObservers(e);
-          }
-        });
-      }
-      executorService.shutdown();
-      executorService.awaitTermination(30, TimeUnit.MINUTES);
-
-    } catch (IOException | InterruptedException e) {
-      LogErrorAndNotifyObservers(e);
-    }
-
-    if(pageNumberOfUnhandledImages.size()>0) saveUnhandledImages(pageNumberOfUnhandledImages);
-  }
 
   private int getProgressValue(int numberOfPages, int pageNumber, int currentValue) {
     int result = (100 * pageNumber / numberOfPages);
@@ -297,110 +218,86 @@ public class PDFConverter implements Observable{
   }
 
   /**
-   * This method combines two another methods (@saveTextFromScannedPDF() and @saveImage()) within,
+   * This method combines two another methods (@saveTextFromPage() and @saveImage()) within,
    * to optimize resource consuming (BufferedImage.class) needed for execution
    * */
-  private void saveImagesAndTextFromScannedPDF() {
+  private void saveImagesAndText(boolean saveText) {
 
-    int numberOfPages = getNumberOfPages();
-    java.util.List<Integer> pageNumberOfUnhandledImages = new ArrayList<>();
+    ArrayList<Integer> pageNumbersOfUnhandledImages = new ArrayList<>();
 
-    LOGGER.log(Level.INFO, String.format("Starting OCR to %s ", pdfFileName));
+    try(RandomAccessFile raf = new RandomAccessFile(file, "r");
+        FileChannel channel = raf.getChannel()) {
 
+      ByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
 
-    for (int startPage = 1; startPage <= numberOfPages; startPage += 100)   {
+      PDFFile pdfFile = new PDFFile(buf);
+      int numberOfPages = pdfFile.getNumPages();
 
-      // document must be reloaded every 100 pages to prevent memory leaks
-      try (PDDocument document = PDDocument.load(file)) {
-        int endPage = (startPage + 99) < numberOfPages ? startPage + 99 : numberOfPages;
+      ArrayList<Thread> threads = new ArrayList<>(N_THREADS);
 
-        PDFRenderer pdfRenderer = new PDFRenderer(document);
+      AtomicInteger currentPage = new AtomicInteger(0);
 
-        AtomicInteger counter = new AtomicInteger(startPage);
-
-        ExecutorService executorService = Executors.newFixedThreadPool(N_THREADS);
-
-        for (int i = startPage; i <= endPage; i++) {
-          executorService.execute(() -> {
-            try {
-              int pageNumber = counter.getAndIncrement();
-
-              BufferedImage image = null;
-              try {
-                image = getImage(pdfRenderer, pageNumber);
-
-                 saveTextFromScannedPDF(pageNumber, image);
-
-                saveImage(pageNumber, image);
-              } catch (OutOfMemoryError oome) {
-                LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
-                pageNumberOfUnhandledImages.add(pageNumber);
-                image.flush();
-              }
-
-              // percent(%) of converted images and text pages
-              imagesProgress = textProgress = getProgressValue(numberOfPages, pageNumber, textProgress);
-
-              if (isNotifiable(pageNumber)) notifyAllObservers();
-
-            } catch (Exception e) {
-              LogErrorAndNotifyObservers(e);
-            }
-          });
-        }
-        executorService.shutdown();
-        executorService.awaitTermination(1, TimeUnit.HOURS);
-
-      } catch (IOException | InterruptedException e) {
-        LogErrorAndNotifyObservers(e);
-      }
-    }
-    if(pageNumberOfUnhandledImages.size()>0) saveUnhandledImagesAndText(pageNumberOfUnhandledImages);
-
-  }
-
-  private void saveUnhandledImagesAndText(List<Integer> pageNumberOfUnhandledImages) {
-    try (PDDocument document = PDDocument.load(file)) {
-
-      PDFRenderer pdfRenderer = new PDFRenderer(document);
-
-      ExecutorService executorService = Executors.newFixedThreadPool(N_THREADS);
-
-      for (Integer page: pageNumberOfUnhandledImages) {
-        executorService.execute(() -> {
+      IntStream.range(0, N_THREADS).parallel().forEach((i) -> threads.add(new Thread(){
+        @Override
+        public void run() {
           try {
+            while (currentPage.incrementAndGet() <= numberOfPages) {
 
-            int pageNumber = page;
-            pageNumberOfUnhandledImages.remove(page);
+              try {
+                BufferedImage bim = getImage(pdfFile, currentPage.get());
 
-            BufferedImage image = null;
+                saveImage(currentPage.get(), bim);
+                if (saveText) saveTextFromPage(currentPage.get(), bim);
 
-            try {
-
-              image = getImage(pdfRenderer, pageNumber);
-
-              saveTextFromScannedPDF(pageNumber, image);
-
-              saveImage(pageNumber, image);
-
-            } catch (OutOfMemoryError oome) {
-              LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", pageNumber, "." + IMAGE_FORMAT));
-              pageNumberOfUnhandledImages.add(pageNumber);
+              } catch (OutOfMemoryError oome) {
+                LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", currentPage.get(), "." + IMAGE_FORMAT));
+                pageNumbersOfUnhandledImages.add(currentPage.get());
+                run();
+              }
             }
+            if (pageNumbersOfUnhandledImages.size() > 0) {
+              for (Integer unhandledPageNumber : pageNumbersOfUnhandledImages) {
+                try {
+                  BufferedImage bim = getImage(pdfFile, unhandledPageNumber);
 
-          } catch (Exception e) {
-            LogErrorAndNotifyObservers(e);
+                  saveImage(unhandledPageNumber, bim);
+                  if (saveText) saveTextFromPage(unhandledPageNumber, bim);
+
+                } catch (OutOfMemoryError oome) {
+                  LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", unhandledPageNumber, "." + IMAGE_FORMAT));
+                  pageNumbersOfUnhandledImages.add(unhandledPageNumber);
+                  run();
+                }
+              }
+            }
+            Thread.currentThread().interrupt();
+          } catch (IOException e) {
+            e.printStackTrace();
           }
-        });
+        }
+      }));
+
+      ForkJoinPool forkJoinPool = new ForkJoinPool(N_THREADS);
+
+      try {
+        forkJoinPool.submit(() -> threads.stream().parallel().forEach((i) -> i.start())).get();
+        forkJoinPool.submit(() -> threads.stream().parallel().forEach((i) ->
+        {
+          try {
+            i.join();
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        })).get();
+      } catch (ExecutionException e) {
+        LOGGER.log(Level.INFO, e.getMessage());
       }
-      executorService.shutdown();
-      executorService.awaitTermination(30, TimeUnit.MINUTES);
+
+      threads.clear();
 
     } catch (IOException | InterruptedException e) {
-      LogErrorAndNotifyObservers(e);
+      LOGGER.log(Level.INFO, e.getMessage());
     }
-
-    if(pageNumberOfUnhandledImages.size()>0) saveUnhandledImages(pageNumberOfUnhandledImages);
   }
 
 //    private void saveTextToFile(int pageNumber, BufferedImage bufferedImage) {
@@ -417,7 +314,7 @@ public class PDFConverter implements Observable{
 //        }
 //    }
 
-  private void saveTextFromScannedPDF(int pageNumber, BufferedImage bufferedImage) {
+  private void saveTextFromPage(int pageNumber, BufferedImage bufferedImage) {
     Tesseract tessInst = new Tesseract();
     tessInst.setPageSegMode(1);
 
@@ -427,6 +324,12 @@ public class PDFConverter implements Observable{
 
       textPages.put(pageNumber, filteredResult);
       System.out.println(filteredResult);
+
+      // percent(%) of converted text pages
+      textProgress = getProgressValue(numberOfPages, pageNumber, textProgress);
+
+      if (isNotifiable(pageNumber)) notifyAllObservers();
+
       if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
     } catch (TesseractException e) {
       LogErrorAndNotifyObservers(e);
@@ -435,25 +338,24 @@ public class PDFConverter implements Observable{
   }
 
 
-  private BufferedImage getImage(PDFRenderer renderer, int page) throws IOException {
+  private BufferedImage getImage(PDFFile pdffile, int pageNumber) throws IOException {
+        int height = ((int) (pdffile.getPage(pageNumber).getBBox().getHeight() / DIMENSIONS_DIVIDER));
+        int width = ((int) (pdffile.getPage(pageNumber).getBBox().getWidth() / DIMENSIONS_DIVIDER));
 
-    return renderer.renderImageWithDPI(page - 1, IMAGE_DPI, ImageType.BINARY);
+        Rectangle rect = new Rectangle(0, 0, width, height);
+        PDFPage page = pdffile.getPage(pageNumber);
 
+        Image pdfImage = page.getImage(width, height, rect, null, true, true);
+        BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
+        bufferedImage.createGraphics().drawImage(pdfImage, 0, 0, null);
+
+        return bufferedImage;
   }
 
   private void saveImage(int pageNumber, BufferedImage bim) throws IOException {
     File file = new File(resultFolderIMG + pageNumber + "." + IMAGE_FORMAT);
-    FileOutputStream output = new FileOutputStream(file);
+    ImageIO.write(bim, IMAGE_FORMAT, file);
 
-    Image tmp = bim.getScaledInstance(((int) (bim.getWidth() / DIMENSIONS_DIVIDER)), ((int) (bim.getHeight() / DIMENSIONS_DIVIDER)), Image.SCALE_SMOOTH);
-    BufferedImage dimg = new BufferedImage(((int) (bim.getWidth() / DIMENSIONS_DIVIDER)), ((int) (bim.getHeight() / DIMENSIONS_DIVIDER)), BufferedImage.TYPE_BYTE_BINARY);
-
-    Graphics2D g2d = dimg.createGraphics();
-    g2d.drawImage(tmp, 0, 0, null);
-
-
-    ImageIOUtil.writeImage(dimg, IMAGE_FORMAT, output, IMAGE_DPI, IMAGE_COMPRESSION);
-    g2d.dispose();
     if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
 
   }
@@ -556,7 +458,7 @@ public class PDFConverter implements Observable{
   private void writePageList(PrintWriter bookmarkWriter) {
     for (int pageNumber = 1; pageNumber <=numberOfPages; pageNumber++) {
 
-      bookmarkWriter.print("<tr><td>page : " + pageNumber + " </td>");
+      bookmarkWriter.print("<tr><td>pageNumber : " + pageNumber + " </td>");
       bookmarkWriter.print("<td><a href=\"PDF\\" + pageNumber + ".pdf\">PDF</a>&ensp;");
       bookmarkWriter.print("<a href=\"IMG\\" + pageNumber + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
 
