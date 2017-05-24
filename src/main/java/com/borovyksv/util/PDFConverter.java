@@ -35,14 +35,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static net.sourceforge.tess4j.ITessAPI.TessPageSegMode.PSM_AUTO_OSD;
-
 public class PDFConverter implements Observable{
   private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
   private static final int N_THREADS = 10;
-  private static final int MESSAGES_TO_LOG = 1;
+  private static final int MESSAGES_TO_LOG = 5;
   private static final int PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS = 5;
-  public static final String TESSERACT_DATAPATH_PARENT_FOLDER = "/usr/share/tesseract-ocr/4.00";
 
   private java.util.List<Observer<PDFConverter>> observers = new ArrayList<>();
   private java.util.List<String> errors = new ArrayList<>();
@@ -54,13 +51,13 @@ public class PDFConverter implements Observable{
   private int IMAGE_DPI = 300;
   private float IMAGE_COMPRESSION = 1f;
   private String IMAGE_FORMAT = "png";
-  private int DIMENSIONS_DIVIDER = 1;
+  private double DIMENSIONS_DIVIDER = 1.5;
   private boolean isScanned = true;
   private boolean isConverted;
 
 
   private int numberOfPages = 0;
-  private int numberOfPagesToNotifyObservers =0;
+  private int numberOfPagesToNotifyObervers=0;
 
 
 
@@ -97,8 +94,8 @@ public class PDFConverter implements Observable{
 
     notifyAllObservers();
 
-//    saveBookmarks();
-    savePages();
+    // saveBookmarks();
+    // savePages();
     saveImagesAndText();
 
     isConverted = isSuccessfullyConverted();
@@ -332,7 +329,7 @@ public class PDFConverter implements Observable{
               try {
                 image = getImage(pdfRenderer, pageNumber);
 
-                saveTextFromScannedPDF(pageNumber, image);
+                 saveTextFromScannedPDF(pageNumber, image);
 
                 saveImage(pageNumber, image);
               } catch (OutOfMemoryError oome) {
@@ -422,16 +419,14 @@ public class PDFConverter implements Observable{
 
   private void saveTextFromScannedPDF(int pageNumber, BufferedImage bufferedImage) {
     Tesseract tessInst = new Tesseract();
-    tessInst.setDatapath(TESSERACT_DATAPATH_PARENT_FOLDER);
-    tessInst.setPageSegMode(PSM_AUTO_OSD);
+    tessInst.setPageSegMode(1);
 
     try {
       String result = tessInst.doOCR(bufferedImage);
       String filteredResult = textFilter(result);
 
-      LOGGER.log(Level.INFO, result);
       textPages.put(pageNumber, filteredResult);
-
+      System.out.println(filteredResult);
       if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
     } catch (TesseractException e) {
       LogErrorAndNotifyObservers(e);
@@ -442,7 +437,7 @@ public class PDFConverter implements Observable{
 
   private BufferedImage getImage(PDFRenderer renderer, int page) throws IOException {
 
-    return renderer.renderImageWithDPI(page - 1, IMAGE_DPI, ImageType.RGB);
+    return renderer.renderImageWithDPI(page - 1, IMAGE_DPI, ImageType.BINARY);
 
   }
 
@@ -450,8 +445,8 @@ public class PDFConverter implements Observable{
     File file = new File(resultFolderIMG + pageNumber + "." + IMAGE_FORMAT);
     FileOutputStream output = new FileOutputStream(file);
 
-    Image tmp = bim.getScaledInstance(bim.getWidth() / DIMENSIONS_DIVIDER, bim.getHeight() / DIMENSIONS_DIVIDER, Image.SCALE_SMOOTH);
-    BufferedImage dimg = new BufferedImage(bim.getWidth() / DIMENSIONS_DIVIDER, bim.getHeight() / DIMENSIONS_DIVIDER, BufferedImage.TYPE_BYTE_BINARY);
+    Image tmp = bim.getScaledInstance(((int) (bim.getWidth() / DIMENSIONS_DIVIDER)), ((int) (bim.getHeight() / DIMENSIONS_DIVIDER)), Image.SCALE_SMOOTH);
+    BufferedImage dimg = new BufferedImage(((int) (bim.getWidth() / DIMENSIONS_DIVIDER)), ((int) (bim.getHeight() / DIMENSIONS_DIVIDER)), BufferedImage.TYPE_BYTE_BINARY);
 
     Graphics2D g2d = dimg.createGraphics();
     g2d.drawImage(tmp, 0, 0, null);
@@ -593,7 +588,7 @@ public class PDFConverter implements Observable{
       this.isScanned = pdfTextStripper.getText(doc).trim().length() == 0;
       this.numberOfPages = doc.getNumberOfPages();
       int toNotify = (int) (numberOfPages * (double) PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS / 100);
-      this.numberOfPagesToNotifyObservers = toNotify>0?toNotify:1;
+      this.numberOfPagesToNotifyObervers = toNotify>0?toNotify:1;
 
 
 
@@ -619,7 +614,7 @@ public class PDFConverter implements Observable{
 
   //
   private boolean isNotifiable(int pageNumber) {
-    return (pageNumber% numberOfPagesToNotifyObservers ==0)||(pageNumber==numberOfPages);
+    return (pageNumber%numberOfPagesToNotifyObervers==0)||(pageNumber==numberOfPages);
   }
 
   private void LogErrorAndNotifyObservers(Exception e) {
