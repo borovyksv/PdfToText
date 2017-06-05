@@ -1,8 +1,8 @@
 package com.borovyksv.camel.processor;
 
+import com.borovyksv.mongo.DocumentAdapter;
 import com.borovyksv.mongo.observer.*;
 import com.borovyksv.mongo.pojo.DocumentWithTextPages;
-import com.borovyksv.mongo.DocumentAdapter;
 import com.borovyksv.mongo.pojo.ProgressStatus;
 import com.borovyksv.mongo.repository.ConvertedDocumentRepository;
 import com.borovyksv.mongo.repository.ProgressStatusRepository;
@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
-import java.util.Map;
 import java.util.logging.Logger;
 
 @Component
@@ -58,8 +57,8 @@ public class PDFProcessor implements Processor {
   }
 
   private void sendTextPagesToDBRoute(String toRoute, Exchange exchange, String fileName, PDFConverter converter) {
-    Map<Integer, String> textPages = converter.getTextPages();
-    DocumentWithTextPages document = DocumentAdapter.getDocumentFromMap(fileName, textPages);
+
+    DocumentWithTextPages document = DocumentAdapter.getDocumentFromMap(fileName, converter.getTextPages());
     document.setBookmarks(DocumentAdapter.getBookmarkPages(converter.getBookmarkPages()));
 
     ProducerTemplate template = exchange.getContext().createProducerTemplate();
