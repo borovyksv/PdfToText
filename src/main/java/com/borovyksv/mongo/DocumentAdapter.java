@@ -30,4 +30,15 @@ public class DocumentAdapter {
     return document;
   }
 
+  public static List<Page> getBookmarkPages(Map<Integer, String> bookmarkPages) {
+    List<Page> pageList = new ArrayList<>();
+    for (Map.Entry<Integer, String> entry : bookmarkPages.entrySet()) {
+      Page page = new Page();
+      page.setId(entry.getKey());
+      page.setText(entry.getValue());
+      pageList.add(page);
+    }
+    return pageList;
+  }
+
 }

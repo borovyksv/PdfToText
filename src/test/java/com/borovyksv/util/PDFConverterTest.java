@@ -71,6 +71,7 @@ public class PDFConverterTest {
         assertEquals(expectedFormat, resultFormat);
     }
 
+
     @Test
     public void testNumberOfConvertedTextFiles() {
         converter.saveImagesAndText();

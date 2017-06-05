@@ -7,71 +7,80 @@ import java.util.List;
 
 public class DocumentWithTextPages {
 
-    @Id
-    public String id;
+  @Id
+  public String id;
 
-    public String name;
-    public List<Page> pages;
+  public String name;
+  public List<Page> bookmarks;
+  public List<Page> pages;
 
-    public DocumentWithTextPages(List<Page> pages, String name) {
-        this.pages = pages;
-        this.name = name;
-    }
+  public DocumentWithTextPages(List<Page> pages, String name) {
+    this.pages = pages;
+    this.name = name;
+  }
 
-    public DocumentWithTextPages() {
+  public DocumentWithTextPages() {
 
-    }
+  }
 
-    @Override
-    public String toString() {
-        return "Document{" +
-                "name= '" + name + '\'' +
-                ", pages: " + pages.size() +
-                '}';
-    }
+  public List<Page> getBookmarks() {
+    return bookmarks;
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+  public void setBookmarks(List<Page> bookmarks) {
+    this.bookmarks = bookmarks;
+  }
 
-        DocumentWithTextPages document = (DocumentWithTextPages) o;
+  @Override
+  public String toString() {
+    return "Document{" +
+      "name= '" + name + '\'' +
+      ", pages: " + pages.size() +
+      '}';
+  }
 
-        if (!name.equals(document.name)) return false;
-        return pages.equals(document.pages);
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
 
-    }
+    DocumentWithTextPages document = (DocumentWithTextPages) o;
 
-    @Override
-    public int hashCode() {
-        int result = name.hashCode();
-        result = 31 * result + pages.hashCode();
-        return result;
-    }
+    if (!name.equals(document.name)) return false;
+    return pages.equals(document.pages);
 
-    public String getName() {
-        return name;
-    }
+  }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  @Override
+  public int hashCode() {
+    int result = name.hashCode();
+    result = 31 * result + pages.hashCode();
+    return result;
+  }
 
-    public String getId() {
-        return id;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public List<Page> getPages() {
-        return pages;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public void setPages(List<Page> pages) {
-        this.pages = pages;
-    }
+  public void setId(String id) {
+    this.id = id;
+  }
+
+  public List<Page> getPages() {
+    return pages;
+  }
+
+  public void setPages(List<Page> pages) {
+    this.pages = pages;
+  }
 
 
 }

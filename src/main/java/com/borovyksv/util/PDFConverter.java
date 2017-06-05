@@ -42,7 +42,7 @@ import java.util.stream.IntStream;
 public class PDFConverter implements Observable{
   private static final Logger LOGGER = Logger.getLogger(PDFConverter.class.getName());
   private static final int N_THREADS = 8;
-  private static final int MESSAGES_TO_LOG = 5;
+  private static final int MESSAGES_TO_LOG = 10;
   private static final int PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS = 5;
 
 
@@ -73,7 +73,11 @@ public class PDFConverter implements Observable{
   private String resultFolderPDF;
   private String resultFolderIMG;
   private Map<Integer, String> textPages = new HashMap<>();
+  private Map<Integer, String> bookmarkPages = new HashMap<>();
 
+  public Map<Integer, String> getBookmarkPages() {
+    return bookmarkPages;
+  }
 
   /**
    *  While converter initializing, constructor creates folders to store converted files
@@ -99,8 +103,8 @@ public class PDFConverter implements Observable{
 
     notifyAllObservers();
 
-    // saveBookmarks();
-    // savePages();
+     saveBookmarks();
+//    savePages();
     saveImagesAndText();
 
     isConverted = isSuccessfullyConverted();
@@ -123,9 +127,9 @@ public class PDFConverter implements Observable{
     LOGGER.log(Level.INFO, String.format("%s is %s pdf", pdfFileName, isScanned ? "scanned" : "text format"));
 
     if (isScanned) {
-      this.saveImagesAndText(true);
+      saveImagesAndText(true);
     } else {
-      saveImages();
+//      saveImages();
       saveText();
     }
   }
@@ -167,39 +171,50 @@ public class PDFConverter implements Observable{
 
   public void saveText() {
     try (PDDocument doc = PDDocument.load(file)) {
-      Splitter splitter = new Splitter();
-      java.util.List<PDDocument> pages = splitter.split(doc);
+      Splitter splitter;
+      double numberOfPages = doc.getNumberOfPages();
 
-      int counter = 1;
 
-      for (PDDocument page : pages) {
-        try {
-          int pageNumber = counter++;
+      for (int i = 1; i <= numberOfPages; i+=1000) {
+        splitter=new Splitter();
+        splitter.setStartPage(i);
+        splitter.setEndPage((i+999)>=numberOfPages?(int)numberOfPages:(i+999));
 
-          String extract = new PDFTextStripper().getText(page);
+        java.util.List<PDDocument> pages = splitter.split(doc);
+        int counter = i;
 
-          String textMark = getTextMark();
 
-          String result =  textMark + extract;
-
-          textPages.put(pageNumber, result);
-
-          // percent(%) of converted text pages
-          textProgress = getProgressValue(numberOfPages, pageNumber, textProgress);
-
-          if (isNotifiable(pageNumber)) notifyAllObservers();
-
-          if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
-        } catch (IOException e) {
-          LogErrorAndNotifyObservers(e);
-        } finally {
+        for (PDDocument page : pages) {
           try {
-            if (page != null) page.close();
+            int pageNumber = counter++;
+
+            String extract = new PDFTextStripper().getText(page);
+
+//            String textMark = getTextMark();
+
+            String result = extract.replaceAll("[\r\n]|( \\.){3,}", " ");
+            textPages.put(pageNumber, result);
+
+            // percent(%) of converted text pages
+            textProgress = getProgressValue(this.numberOfPages, pageNumber, textProgress);
+
+            if (isNotifiable(pageNumber)) notifyAllObservers();
+
+            if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d.txt saved", pageNumber));
           } catch (IOException e) {
             LogErrorAndNotifyObservers(e);
+          } finally {
+            try {
+              if (page != null) page.close();
+            } catch (IOException e) {
+              LogErrorAndNotifyObservers(e);
+            }
           }
         }
       }
+
+      System.out.println("number of pages "+numberOfPages);
+      System.out.println("size of text pages "+textPages.size());
     } catch (IOException e) {
       LogErrorAndNotifyObservers(e);}
   }
@@ -223,7 +238,6 @@ public class PDFConverter implements Observable{
    * */
   private void saveImagesAndText(boolean saveText) {
 
-    ArrayList<Integer> pageNumbersOfUnhandledImages = new ArrayList<>();
 
     try(RandomAccessFile raf = new RandomAccessFile(file, "r");
         FileChannel channel = raf.getChannel()) {
@@ -231,51 +245,16 @@ public class PDFConverter implements Observable{
       ByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
 
       PDFFile pdfFile = new PDFFile(buf);
+
       int numberOfPages = pdfFile.getNumPages();
 
       ArrayList<Thread> threads = new ArrayList<>(N_THREADS);
 
       AtomicInteger currentPage = new AtomicInteger(0);
 
-      IntStream.range(0, N_THREADS).parallel().forEach((i) -> threads.add(new Thread(){
-        @Override
-        public void run() {
-          try {
-            while (currentPage.incrementAndGet() <= numberOfPages) {
-
-              try {
-                BufferedImage bim = getImage(pdfFile, currentPage.get());
-
-                saveImage(currentPage.get(), bim);
-                if (saveText) saveTextFromPage(currentPage.get(), bim);
-
-              } catch (OutOfMemoryError oome) {
-                LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", currentPage.get(), "." + IMAGE_FORMAT));
-                pageNumbersOfUnhandledImages.add(currentPage.get());
-                run();
-              }
-            }
-            if (pageNumbersOfUnhandledImages.size() > 0) {
-              for (Integer unhandledPageNumber : pageNumbersOfUnhandledImages) {
-                try {
-                  BufferedImage bim = getImage(pdfFile, unhandledPageNumber);
-
-                  saveImage(unhandledPageNumber, bim);
-                  if (saveText) saveTextFromPage(unhandledPageNumber, bim);
-
-                } catch (OutOfMemoryError oome) {
-                  LOGGER.log(Level.INFO, String.format("%d%s caused OutOfMemory, retrying to convert in another tread", unhandledPageNumber, "." + IMAGE_FORMAT));
-                  pageNumbersOfUnhandledImages.add(unhandledPageNumber);
-                  run();
-                }
-              }
-            }
-            Thread.currentThread().interrupt();
-          } catch (IOException e) {
-            e.printStackTrace();
-          }
-        }
-      }));
+      IntStream.range(0, N_THREADS).parallel().forEach((i) -> threads.add(
+        new ConvertThread(this, pdfFile, saveText)
+      ));
 
       ForkJoinPool forkJoinPool = new ForkJoinPool(N_THREADS);
 
@@ -314,7 +293,7 @@ public class PDFConverter implements Observable{
 //        }
 //    }
 
-  private void saveTextFromPage(int pageNumber, BufferedImage bufferedImage) {
+  protected void saveTextFromPage(int pageNumber, BufferedImage bufferedImage) {
     Tesseract tessInst = new Tesseract();
     tessInst.setPageSegMode(1);
 
@@ -338,23 +317,38 @@ public class PDFConverter implements Observable{
   }
 
 
-  private BufferedImage getImage(PDFFile pdffile, int pageNumber) throws IOException {
-        int height = ((int) (pdffile.getPage(pageNumber).getBBox().getHeight() / DIMENSIONS_DIVIDER));
-        int width = ((int) (pdffile.getPage(pageNumber).getBBox().getWidth() / DIMENSIONS_DIVIDER));
+  protected BufferedImage getImage(PDFFile pdffile, int pageNumber) throws IOException {
+        int scale = 3;
+
+        PDFPage page = pdffile.getPage(pageNumber);
+        int width = (int) page.getBBox().getWidth();
+        int height = (int) page.getBBox().getHeight();
 
         Rectangle rect = new Rectangle(0, 0, width, height);
-        PDFPage page = pdffile.getPage(pageNumber);
+        int rotation = page.getRotation();
+        Rectangle rectl = rect;
 
-        Image pdfImage = page.getImage(width, height, rect, null, true, true);
-        BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
+        if (rotation == 90 || rotation == 270) {
+          rectl = new Rectangle(0, 0, rect.height, rect.width);
+        }
+
+
+        Image pdfImage = page.getImage(rect.width*scale, rect.height*scale, rectl, null, true, true);
+        BufferedImage bufferedImage = new BufferedImage(rect.width*scale, rect.height*scale, BufferedImage.TYPE_BYTE_BINARY);
         bufferedImage.createGraphics().drawImage(pdfImage, 0, 0, null);
 
+//    System.out.println(height+"height"+width+"width");
+//    System.out.println(pageNumber+" - page, rotation = "+page.getRotation()+"\n\n\n");
         return bufferedImage;
   }
 
-  private void saveImage(int pageNumber, BufferedImage bim) throws IOException {
+  protected void saveImage(int pageNumber, BufferedImage bim) throws IOException {
     File file = new File(resultFolderIMG + pageNumber + "." + IMAGE_FORMAT);
     ImageIO.write(bim, IMAGE_FORMAT, file);
+
+    // percent(%) of converted images
+    imagesProgress = getProgressValue(numberOfPages, pageNumber, imagesProgress);
+    if (isNotifiable(pageNumber)) notifyAllObservers();
 
     if (pageNumber % MESSAGES_TO_LOG == 0) LOGGER.log(Level.INFO, String.format("%d%s saved", pageNumber, "." + IMAGE_FORMAT));
 
@@ -378,7 +372,8 @@ public class PDFConverter implements Observable{
 //      }
 //    }
 //    return sb.toString();
-    return input.replaceAll("\n", " ").replaceAll(" {3,}", "");
+    String pattern = "[/.\\-—_\"']{3,}|[uJLlI\\\\/)(\\-_, ]{5,}";
+    return input.replaceAll("\n", " ").replaceAll(" {3,}", "").replaceAll(pattern, "");
   }
 
   //converts fileName to indexable string
@@ -476,7 +471,9 @@ public class PDFConverter implements Observable{
       bookmarkWriter.print("<td><a href=\"PDF\\" + pageNumber + ".pdf\">PDF</a>&ensp;");
       bookmarkWriter.print("<a href=\"IMG\\" + pageNumber + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
 
-      writeBookmark(current, indentation + "&ensp;&ensp;&ensp;", document, bookmarkWriter);
+      bookmarkPages.put(pageNumber, indentation+current.getTitle());
+
+      writeBookmark(current, indentation + "- ", document, bookmarkWriter);
       current = current.getNextSibling();
     }
   }

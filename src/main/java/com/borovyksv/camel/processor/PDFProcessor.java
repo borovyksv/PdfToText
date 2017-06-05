@@ -60,6 +60,7 @@ public class PDFProcessor implements Processor {
   private void sendTextPagesToDBRoute(String toRoute, Exchange exchange, String fileName, PDFConverter converter) {
     Map<Integer, String> textPages = converter.getTextPages();
     DocumentWithTextPages document = DocumentAdapter.getDocumentFromMap(fileName, textPages);
+    document.setBookmarks(DocumentAdapter.getBookmarkPages(converter.getBookmarkPages()));
 
     ProducerTemplate template = exchange.getContext().createProducerTemplate();
     template.sendBody(toRoute, document);

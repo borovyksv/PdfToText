@@ -86,6 +86,7 @@
     </dependency>
 
     <!--PDF framework-->
+    <!-- https://mvnrepository.com/artifact/com.sun.pdfview/pdfrenderer -->
     <dependency>
       <groupId>org.apache.pdfbox</groupId>
       <artifactId>pdfbox</artifactId>
@@ -153,6 +154,11 @@
       <groupId>net.lingala.zip4j</groupId>
       <artifactId>zip4j</artifactId>
       <version>1.3.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.swinglabs</groupId>
+      <artifactId>pdf-renderer</artifactId>
+      <version>1.0.5</version>
     </dependency>
 
 
