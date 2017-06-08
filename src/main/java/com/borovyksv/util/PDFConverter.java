@@ -7,7 +7,6 @@ import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfCopy;
 import com.itextpdf.text.pdf.PdfImportedPage;
 import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.util.SmartPdfSplitter;
 import com.sun.pdfview.PDFFile;
 import com.sun.pdfview.PDFPage;
 import net.sourceforge.tess4j.Tesseract;
@@ -34,7 +33,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
@@ -53,16 +51,13 @@ public class PDFConverter implements Observable{
   private int imagesProgress;
   private int textProgress;
 
-  private int IMAGE_DPI = 300;
-  private float IMAGE_COMPRESSION = 1f;
   private String IMAGE_FORMAT = "png";
-  private double DIMENSIONS_DIVIDER = 1.5;
   private boolean isScanned = true;
   private boolean isConverted;
 
 
   private int numberOfPages = 0;
-  private int numberOfPagesToNotifyObervers=0;
+  private int numberOfPagesToNotifyObservers = 0;
 
 
 
@@ -73,9 +68,9 @@ public class PDFConverter implements Observable{
   private String resultFolderPDF;
   private String resultFolderIMG;
   private Map<Integer, String> textPages = new HashMap<>();
-  private Map<Integer, String> bookmarkPages = new HashMap<>();
+  private Map<String, Integer> bookmarkPages = new HashMap<>();
 
-  public Map<Integer, String> getBookmarkPages() {
+  public Map<String, Integer> getBookmarkPages() {
     return bookmarkPages;
   }
 
@@ -87,7 +82,7 @@ public class PDFConverter implements Observable{
     this.pdfFileDirectory = absolutePath;
     this.file = new File(absolutePath);
     this.pdfFileName = this.file.getName();
-    this.resultFolder = file.getParent() + File.separator + file.getName().substring(0, file.getName().length() - 4) + "_parsed" + File.separator;
+    this.resultFolder = file.getParent() + File.separator + file.getName().replace(".pdf","") + "_parsed" + File.separator;
     this.resultFolderPDF = resultFolder + "PDF" + File.separator;
     this.resultFolderIMG = resultFolder + "IMG" + File.separator;
     new File(resultFolder).mkdir();
@@ -103,8 +98,8 @@ public class PDFConverter implements Observable{
 
     notifyAllObservers();
 
-     saveBookmarks();
-//    savePages();
+     saveBookmarksToHTML();
+    savePages();
     saveImagesAndText();
 
     isConverted = isSuccessfullyConverted();
@@ -129,7 +124,7 @@ public class PDFConverter implements Observable{
     if (isScanned) {
       saveImagesAndText(true);
     } else {
-//      saveImages();
+      saveImages();
       saveText();
     }
   }
@@ -140,7 +135,6 @@ public class PDFConverter implements Observable{
     try {
       reader = new PdfReader(pdfFileDirectory);
       int numberOfPages = reader.getNumberOfPages();
-      SmartPdfSplitter splitter = new SmartPdfSplitter(reader);
       int pageNumber = 1;
       while (pageNumber<=numberOfPages) {
         String outFile = resultFolderPDF + pageNumber + ".pdf";
@@ -189,8 +183,6 @@ public class PDFConverter implements Observable{
             int pageNumber = counter++;
 
             String extract = new PDFTextStripper().getText(page);
-
-//            String textMark = getTextMark();
 
             String result = extract.replaceAll("[\r\n]|( \\.){3,}", " ");
             textPages.put(pageNumber, result);
@@ -246,11 +238,7 @@ public class PDFConverter implements Observable{
 
       PDFFile pdfFile = new PDFFile(buf);
 
-      int numberOfPages = pdfFile.getNumPages();
-
       ArrayList<Thread> threads = new ArrayList<>(N_THREADS);
-
-      AtomicInteger currentPage = new AtomicInteger(0);
 
       IntStream.range(0, N_THREADS).parallel().forEach((i) -> threads.add(
         new ConvertThread(this, pdfFile, saveText)
@@ -337,8 +325,6 @@ public class PDFConverter implements Observable{
         BufferedImage bufferedImage = new BufferedImage(rect.width*scale, rect.height*scale, BufferedImage.TYPE_BYTE_BINARY);
         bufferedImage.createGraphics().drawImage(pdfImage, 0, 0, null);
 
-//    System.out.println(height+"height"+width+"width");
-//    System.out.println(pageNumber+" - page, rotation = "+page.getRotation()+"\n\n\n");
         return bufferedImage;
   }
 
@@ -355,23 +341,6 @@ public class PDFConverter implements Observable{
   }
 
   private String textFilter(String input) {
-//    String group = "[=;,_\\-/\\.\\\\\\\"\\'@~]";
-//    String pattern = String.format("(\\D)\\1{2,}?|[^\\u0000-\\u007F\\u00b0\\n\\r\\tВ]|\\s{3,}?|%1$s{3,}|%1$s+ %1$s+|( .{1,2} .{1,2} )+", group);
-//    //delete garbage from whole text
-//    input = input.replaceAll(pattern, "");
-//
-//    //Filter short lines from garbage
-//    StringBuilder sb = new StringBuilder();
-//    sb.append(getTextMark()).append("\n");
-//    for (String s : input.split("\n")) {
-//      Matcher m = Pattern.compile("[=;:_\\-/\\\\\"'@~!+,\\|\\.1%\\*\\$]").matcher(s);
-//      int matches = 0;
-//      while (m.find()) matches++;
-//      if (s.matches("^\\w{4,}[:\\.,]?$") || (matches < 3 && s.length() > 6) || s.length() > 20) {
-//        sb.append(s).append("\n");
-//      }
-//    }
-//    return sb.toString();
     String pattern = "[/.\\-—_\"']{3,}|[uJLlI\\\\/)(\\-_, ]{5,}";
     return input.replaceAll("\n", " ").replaceAll(" {3,}", "").replaceAll(pattern, "");
   }
@@ -381,7 +350,7 @@ public class PDFConverter implements Observable{
     return pdfFileName.substring(0, pdfFileName.indexOf(".pdf")).replaceAll("_", " ") + "\n";
   }
 
-  public boolean saveBookmarks() {
+  public boolean saveBookmarksToHTML() {
     try (PDDocument document = PDDocument.load(file)) {
       PDDocumentOutline outline = document.getDocumentCatalog().getDocumentOutline();
       try (PrintWriter bookmarkWriter = new PrintWriter(resultFolder + "Bookmarks.html")) {
@@ -471,7 +440,7 @@ public class PDFConverter implements Observable{
       bookmarkWriter.print("<td><a href=\"PDF\\" + pageNumber + ".pdf\">PDF</a>&ensp;");
       bookmarkWriter.print("<a href=\"IMG\\" + pageNumber + "." + IMAGE_FORMAT + "\">IMG</a>&ensp;");
 
-      bookmarkPages.put(pageNumber, indentation+current.getTitle());
+      bookmarkPages.put(indentation+current.getTitle(), pageNumber);
 
       writeBookmark(current, indentation + "- ", document, bookmarkWriter);
       current = current.getNextSibling();
@@ -487,7 +456,7 @@ public class PDFConverter implements Observable{
       this.isScanned = pdfTextStripper.getText(doc).trim().length() == 0;
       this.numberOfPages = doc.getNumberOfPages();
       int toNotify = (int) (numberOfPages * (double) PERCENT_OF_CONVERTED_PAGES_TO_NOTIFY_OBSERVERS / 100);
-      this.numberOfPagesToNotifyObervers = toNotify>0?toNotify:1;
+      this.numberOfPagesToNotifyObservers = toNotify>0?toNotify:1;
 
 
 
@@ -513,7 +482,7 @@ public class PDFConverter implements Observable{
 
   //
   private boolean isNotifiable(int pageNumber) {
-    return (pageNumber%numberOfPagesToNotifyObervers==0)||(pageNumber==numberOfPages);
+    return (pageNumber% numberOfPagesToNotifyObservers ==0)||(pageNumber==numberOfPages);
   }
 
   private void LogErrorAndNotifyObservers(Exception e) {

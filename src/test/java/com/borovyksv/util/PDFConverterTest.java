@@ -29,7 +29,7 @@ public class PDFConverterTest {
 
     @Test
     public void testReturnFalseIfBookmarksNotExists() throws FileNotFoundException {
-        boolean bool = converter.saveBookmarks();
+        boolean bool = converter.saveBookmarksToHTML();
         assertFalse(bool);
     }
 

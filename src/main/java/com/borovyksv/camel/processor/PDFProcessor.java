@@ -5,17 +5,16 @@ import com.borovyksv.mongo.observer.*;
 import com.borovyksv.mongo.pojo.DocumentWithTextPages;
 import com.borovyksv.mongo.pojo.ProgressStatus;
 import com.borovyksv.mongo.repository.ConvertedDocumentRepository;
+import com.borovyksv.mongo.repository.DocumentWithTextPagesRepository;
 import com.borovyksv.mongo.repository.ProgressStatusRepository;
 import com.borovyksv.util.PDFConverter;
 import com.borovyksv.util.PDFConverterFactory;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.apache.camel.ProducerTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
-import java.util.logging.Logger;
 
 @Component
 public class PDFProcessor implements Processor {
@@ -23,17 +22,21 @@ public class PDFProcessor implements Processor {
   ProgressStatusRepository progressStatusRepository;
   @Autowired
   ConvertedDocumentRepository convertedDocumentRepository;
-
-  private static final Logger LOGGER = Logger.getLogger(PDFProcessor.class.getName());
+  @Autowired
+  DocumentWithTextPagesRepository documentWithTextPagesRepository;
 
 
   public void process(Exchange exchange) throws Exception {
     InputStream stream = exchange.getIn().getBody(InputStream.class);
     String fileName = exchange.getIn().getHeader(Exchange.FILE_NAME, String.class);
 
+    DocumentWithTextPages databaseDocument = getDatabaseDocument(fileName);
+
+    String originalFileName = databaseDocument.getName();
+
     PDFConverter converter = PDFConverterFactory.newPDFConverter(stream, fileName);
 
-    registerDBUpdateObservers(converter, fileName);
+    registerDBUpdateObservers(converter, originalFileName);
 
     converter.convert();
 
@@ -41,10 +44,20 @@ public class PDFProcessor implements Processor {
     exchange.getOut().setHeader(Exchange.FILE_NAME, fileName);
     exchange.getOut().setBody(converter.getResultFolder());
 
-    //set body to (Document with txt files) and send to DB route
-    sendTextPagesToDBRoute("seda:database", exchange, fileName, converter);
+    updateDocumentInDB(databaseDocument, converter);
 
   }
+
+  private DocumentWithTextPages getDatabaseDocument(String fileName) {
+    String id = fileName.replace(".pdf", "");
+    DocumentWithTextPages databaseDocument = documentWithTextPagesRepository.findById(id);
+    if (databaseDocument==null){
+      return new DocumentWithTextPages(fileName);
+    } else {
+      return databaseDocument;
+    }
+  }
+
 
   private void registerDBUpdateObservers(PDFConverter converter, String fileName) {
     ProgressStatus progressStatus = new ProgressStatus(fileName);
@@ -56,13 +69,18 @@ public class PDFProcessor implements Processor {
 
   }
 
-  private void sendTextPagesToDBRoute(String toRoute, Exchange exchange, String fileName, PDFConverter converter) {
+  private void updateDocumentInDB(DocumentWithTextPages databaseDocument, PDFConverter converter) {
 
-    DocumentWithTextPages document = DocumentAdapter.getDocumentFromMap(fileName, converter.getTextPages());
-    document.setBookmarks(DocumentAdapter.getBookmarkPages(converter.getBookmarkPages()));
 
-    ProducerTemplate template = exchange.getContext().createProducerTemplate();
-    template.sendBody(toRoute, document);
+    databaseDocument.setPages(DocumentAdapter.getPageListFromMap(converter.getTextPages()));
+    databaseDocument.setBookmarks(DocumentAdapter.getBookmarkListFromMap(converter.getBookmarkPages()));
+
+    //    todo: // FIXME: 07.06.2017
+//    databaseDocument.setFolder("folder");
+    //
+
+    documentWithTextPagesRepository.save(databaseDocument);
+
   }
 
 

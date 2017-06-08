@@ -1,33 +1,28 @@
 package com.borovyksv.mongo.pojo;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-
 public class Page {
-    @Id
-    public Integer id;
-    @Indexed
+
+    public Integer pageNum;
     public String text;
 
-    public Page(Integer id, String text) {
+  public Page(Integer pageNum, String text) {
+    this.pageNum = pageNum;
+    this.text = text;
+  }
 
-        this.id = id;
-        this.text = text;
+  public Page() {
+
     }
 
-    public Page() {
+  public Integer getPageNum() {
+    return pageNum;
+  }
 
-    }
+  public void setPageNum(Integer pageNum) {
+    this.pageNum = pageNum;
+  }
 
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getText() {
+  public String getText() {
         return text;
     }
 

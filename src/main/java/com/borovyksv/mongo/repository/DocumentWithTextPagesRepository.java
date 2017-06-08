@@ -9,4 +9,6 @@ public interface DocumentWithTextPagesRepository extends MongoRepository<Documen
 
     DocumentWithTextPages findByName(String name);
 
+    DocumentWithTextPages findById(String id);
+
 }

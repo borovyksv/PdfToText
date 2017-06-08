@@ -5,6 +5,7 @@ import net.lingala.zip4j.exception.ZipException;
 import net.lingala.zip4j.model.ZipParameters;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
+import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -20,9 +21,20 @@ public class ZipProcessor implements Processor {
         String fileName = exchange.getIn().getHeader(Exchange.FILE_NAME, String.class);
 
         sendZippedFilesWithBody(exchange, fileName, folder);
+
+        deleteTmpFiles(folder);
     }
 
-    private void sendZippedFilesWithBody(Exchange exchange, String fileName, String folder) throws IOException {
+  private void deleteTmpFiles(String folder) {
+    File fold = new File(folder);
+    File file = new File(folder.replace("_parsed", ".pdf"));
+
+    FileUtils.deleteQuietly(fold);
+    FileUtils.deleteQuietly(file);
+
+  }
+
+  private void sendZippedFilesWithBody(Exchange exchange, String fileName, String folder) throws IOException {
         String zipFileName = fileName.replace(".pdf", ".zip");
         ZipFile convertedFile = zip(folder, zipFileName);
 

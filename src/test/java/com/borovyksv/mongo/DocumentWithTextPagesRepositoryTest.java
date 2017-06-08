@@ -84,7 +84,7 @@ public class DocumentWithTextPagesRepositoryTest {
 
         for (int i = 0; i < 5; i++) {
             Page page = new Page();
-            page.setId(i);
+            page.setPageNum(i);
             page.setText(name+": TEST TEXT -"+i);
             pageList.add(page);
         }

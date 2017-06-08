@@ -19,7 +19,7 @@ public class PDFConverterFactory {
 
             if (!fileName.endsWith(".pdf")) throw new IllegalArgumentException("File format MUST be PDF");
 
-            tmpFile = Files.createTempFile(fileName, ".pdf");
+            tmpFile = Files.createTempFile(fileName.replace(".pdf","ID"), ".pdf");
 
             LOGGER.log(Level.INFO, String.format("Temp file %s created", tmpFile));
             FileUtils.copyInputStreamToFile(stream, tmpFile.toFile());
