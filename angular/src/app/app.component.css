@@ -1,0 +1,13 @@
+div.progress{
+  position: relative;
+  margin-top:1px;
+  margin-bottom:0px;
+  height:19px;
+}
+
+div.progress span {
+  position: absolute;
+  display: block;
+  width: 100%;
+  color: black;
+}
