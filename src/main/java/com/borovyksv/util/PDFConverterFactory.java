@@ -13,20 +13,36 @@ public class PDFConverterFactory {
     private static final Logger LOGGER = Logger.getLogger(PDFConverterFactory.class.getName());
 
 
-    public static PDFConverter newPDFConverter(InputStream stream, String fileName) {
+//    public static PDFConverter newPDFConverter(InputStream stream, String nameWithId) {
+//        Path tmpFile=null;
+//        try {
+//
+//            if (!nameWithId.endsWith(".pdf")) throw new IllegalArgumentException("File format MUST be PDF");
+//
+//            tmpFile = Files.createTempFile(nameWithId.replace(".pdf","ID"), ".pdf");
+//
+//            LOGGER.log(Level.INFO, String.format("Temp file %s created", tmpFile));
+//            FileUtils.copyInputStreamToFile(stream, tmpFile.toFile());
+//        } catch (IOException e) {
+//            LOGGER.log(Level.SEVERE, "Exception occur", e);
+//        }
+//        return new PDFConverter(tmpFile.toString());
+//    }
+
+    public static PDFConverter newPDFConverter(InputStream stream, String id, String originalFileName, String endFolder) {
         Path tmpFile=null;
         try {
 
-            if (!fileName.endsWith(".pdf")) throw new IllegalArgumentException("File format MUST be PDF");
+            if (!originalFileName.endsWith(".pdf")) throw new IllegalArgumentException("File format MUST be PDF");
 
-            tmpFile = Files.createTempFile(fileName.replace(".pdf","ID"), ".pdf");
+            tmpFile = Files.createTempFile(originalFileName.replace(".pdf","_"), ".pdf");
 
             LOGGER.log(Level.INFO, String.format("Temp file %s created", tmpFile));
             FileUtils.copyInputStreamToFile(stream, tmpFile.toFile());
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Exception occur", e);
         }
-        return new PDFConverter(tmpFile.toString());
+        return new PDFConverter(tmpFile.toString(), id, originalFileName, endFolder);
     }
 
 

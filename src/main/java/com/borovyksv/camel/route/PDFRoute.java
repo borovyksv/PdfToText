@@ -21,14 +21,16 @@ public class PDFRoute extends RouteBuilder {
 
   @Override
   public void configure() throws Exception {
-    from("{{route.from}}?concurrentConsumers=2")
+    from("{{route.from}}")
       .filter(header("CamelFileName").endsWith(".pdf"))                                   //filter PDF input
-      .process(pdfProcessor).log("Sending ${header.CamelFileName} to Zip process")        //convert PDF to files
-      .to("seda:convertedPdf");
+      .process(pdfProcessor).log("Sending ${header.CamelFileName} to Zip process").end();        //convert PDF to files
+//      .to("seda:convertedPdf");
 
-    from("seda:convertedPdf")
-      .process(zipProcessor).log("Zipped ${header.CamelFileName} sending to {{route.to}}")//Zipping files
-      .to("{{route.to}}");                                                                //Sending .zip to final destination
+//      .to("seda:convertedPdf");
+
+//    from("seda:convertedPdf")
+//      .process(zipProcessor).log("Zipped ${header.CamelFileName} sending to {{route.to}}")//Zipping files
+//      .to("{{route.to}}");                                                                //Sending .zip to final destination
 
 //    from("{{route.to}}")
 //      .filter(header("CamelFileName").endsWith(".zip"))                                   //unzip folders

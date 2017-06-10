@@ -61,7 +61,7 @@ public class PDFConverter implements Observable{
 
 
 
-  private String pdfFileDirectory;
+  private String pdfFilePath;
   private String pdfFileName;
   private File file;
   private String resultFolder;
@@ -79,12 +79,27 @@ public class PDFConverter implements Observable{
    *  in the same destination where input file exists
    * */
   protected PDFConverter(String absolutePath) {
-    this.pdfFileDirectory = absolutePath;
+    this.pdfFilePath = absolutePath;
     this.file = new File(absolutePath);
     this.pdfFileName = this.file.getName();
-    this.resultFolder = file.getParent() + File.separator + file.getName().replace(".pdf","") + "_parsed" + File.separator;
+    this.resultFolder = file.getParent() + File.separator + file.getName().replace(".pdf","") + File.separator;
     this.resultFolderPDF = resultFolder + "PDF" + File.separator;
-    this.resultFolderIMG = resultFolder + "IMG" + File.separator;
+    this.resultFolderIMG = resultFolder + "PNG" + File.separator;
+    new File(resultFolder).mkdir();
+    new File(resultFolderPDF).mkdir();
+    new File(resultFolderIMG).mkdir();
+    initConstants();
+
+    LOGGER.log(Level.INFO, String.format("PDFConverter for %s file initialized", absolutePath));
+  }
+
+  protected PDFConverter(String absolutePath, String id, String originalFileName, String endFolder) {
+    this.pdfFilePath = absolutePath;
+    this.file = new File(absolutePath);
+    this.pdfFileName = originalFileName;
+    this.resultFolder = endFolder + id + File.separator;
+    this.resultFolderPDF = resultFolder + "PDF" + File.separator;
+    this.resultFolderIMG = resultFolder + "PNG" + File.separator;
     new File(resultFolder).mkdir();
     new File(resultFolderPDF).mkdir();
     new File(resultFolderIMG).mkdir();
@@ -98,7 +113,7 @@ public class PDFConverter implements Observable{
 
     notifyAllObservers();
 
-     saveBookmarksToHTML();
+    saveBookmarks();
     savePages();
     saveImagesAndText();
 
@@ -133,7 +148,7 @@ public class PDFConverter implements Observable{
   public void savePages() {
     PdfReader reader = null;
     try {
-      reader = new PdfReader(pdfFileDirectory);
+      reader = new PdfReader(pdfFilePath);
       int numberOfPages = reader.getNumberOfPages();
       int pageNumber = 1;
       while (pageNumber<=numberOfPages) {
@@ -237,6 +252,7 @@ public class PDFConverter implements Observable{
       ByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
 
       PDFFile pdfFile = new PDFFile(buf);
+
 
       ArrayList<Thread> threads = new ArrayList<>(N_THREADS);
 
@@ -346,9 +362,9 @@ public class PDFConverter implements Observable{
   }
 
   //converts fileName to indexable string
-  private String getTextMark() {
-    return pdfFileName.substring(0, pdfFileName.indexOf(".pdf")).replaceAll("_", " ") + "\n";
-  }
+//  private String getTextMark() {
+//    return pdfFileName.substring(0, pdfFileName.indexOf(".pdf")).replaceAll("_", " ") + "\n";
+//  }
 
   public boolean saveBookmarksToHTML() {
     try (PDDocument document = PDDocument.load(file)) {
@@ -367,7 +383,7 @@ public class PDFConverter implements Observable{
         } else {
           //writing to HTML
           LOGGER.log(Level.INFO, "writing bookmarks");
-          writeBookmark(outline, "", document, bookmarkWriter);
+          writeBookmarkToHTML(outline, "", document, bookmarkWriter);
 
         }
 
@@ -375,6 +391,31 @@ public class PDFConverter implements Observable{
 
       } catch (IOException e) {
         LogErrorAndNotifyObservers(e);}
+    } catch (Exception e) {
+      LogErrorAndNotifyObservers(e);}
+
+    LOGGER.log(Level.INFO, "Bookmarks saved");
+    return true;
+  }
+
+  public boolean saveBookmarks() {
+    try (PDDocument document = PDDocument.load(file)) {
+      PDDocumentOutline outline = document.getDocumentCatalog().getDocumentOutline();
+
+        LOGGER.log(Level.INFO, String.format("%sBookmarks.html created", resultFolder));
+
+        if (outline == null) {
+
+          LOGGER.log(Level.INFO, "PDF file does not have Bookmarks");
+          return false;
+
+        } else {
+          LOGGER.log(Level.INFO, "writing bookmarks");
+          writeBookmark(outline, "", document);
+
+        }
+
+
     } catch (Exception e) {
       LogErrorAndNotifyObservers(e);}
 
@@ -429,7 +470,7 @@ public class PDFConverter implements Observable{
     }
   }
 
-  public void writeBookmark(PDOutlineNode bookmark, String indentation, PDDocument document, PrintWriter bookmarkWriter) throws IOException {
+  public void writeBookmarkToHTML(PDOutlineNode bookmark, String indentation, PDDocument document, PrintWriter bookmarkWriter) throws IOException {
     PDOutlineItem current = bookmark.getFirstChild();
     while (current != null) {
       PDPage currentPage = current.findDestinationPage(document);
@@ -442,7 +483,20 @@ public class PDFConverter implements Observable{
 
       bookmarkPages.put(indentation+current.getTitle(), pageNumber);
 
-      writeBookmark(current, indentation + "- ", document, bookmarkWriter);
+      writeBookmarkToHTML(current, indentation + "- ", document, bookmarkWriter);
+      current = current.getNextSibling();
+    }
+  }
+
+  public void writeBookmark(PDOutlineNode bookmark, String indentation, PDDocument document) throws IOException {
+    PDOutlineItem current = bookmark.getFirstChild();
+    while (current != null) {
+      PDPage currentPage = current.findDestinationPage(document);
+      Integer pageNumber = document.getDocumentCatalog().getPages().indexOf(currentPage) + 1;
+
+      bookmarkPages.put(indentation+current.getTitle(), pageNumber);
+
+      writeBookmark(current, indentation + "- ", document);
       current = current.getNextSibling();
     }
   }
@@ -450,7 +504,6 @@ public class PDFConverter implements Observable{
 
   public void initConstants() {
     try (PDDocument doc = PDDocument.load(file)) {
-
       PDFTextStripper pdfTextStripper = new PDFTextStripper();
       pdfTextStripper.setEndPage(3);
       this.isScanned = pdfTextStripper.getText(doc).trim().length() == 0;

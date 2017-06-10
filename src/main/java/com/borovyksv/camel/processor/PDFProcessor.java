@@ -12,6 +12,7 @@ import com.borovyksv.util.PDFConverterFactory;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -25,34 +26,38 @@ public class PDFProcessor implements Processor {
   @Autowired
   DocumentWithTextPagesRepository documentWithTextPagesRepository;
 
+  @Value( "${end.folder}" )
+  private String endFolder;
 
   public void process(Exchange exchange) throws Exception {
     InputStream stream = exchange.getIn().getBody(InputStream.class);
-    String fileName = exchange.getIn().getHeader(Exchange.FILE_NAME, String.class);
+    String nameWithId = exchange.getIn().getHeader(Exchange.FILE_NAME, String.class);
 
-    DocumentWithTextPages databaseDocument = getDatabaseDocument(fileName);
+    String id = nameWithId.replace(".pdf", "");
+
+    DocumentWithTextPages databaseDocument = getDatabaseDocument(id);
 
     String originalFileName = databaseDocument.getName();
 
-    PDFConverter converter = PDFConverterFactory.newPDFConverter(stream, fileName);
+    PDFConverter converter = PDFConverterFactory.newPDFConverter(stream, id, originalFileName, endFolder);
 
     registerDBUpdateObservers(converter, originalFileName);
 
     converter.convert();
 
 
-    exchange.getOut().setHeader(Exchange.FILE_NAME, fileName);
-    exchange.getOut().setBody(converter.getResultFolder());
+//    exchange.getOut().setHeader(Exchange.FILE_NAME, fileName);
+//    exchange.getOut().setBody(converter.getResultFolder());
+
 
     updateDocumentInDB(databaseDocument, converter);
 
   }
 
-  private DocumentWithTextPages getDatabaseDocument(String fileName) {
-    String id = fileName.replace(".pdf", "");
+  private DocumentWithTextPages getDatabaseDocument(String id) {
     DocumentWithTextPages databaseDocument = documentWithTextPagesRepository.findById(id);
     if (databaseDocument==null){
-      return new DocumentWithTextPages(fileName);
+      return new DocumentWithTextPages(id+".pdf");
     } else {
       return databaseDocument;
     }
@@ -74,10 +79,6 @@ public class PDFProcessor implements Processor {
 
     databaseDocument.setPages(DocumentAdapter.getPageListFromMap(converter.getTextPages()));
     databaseDocument.setBookmarks(DocumentAdapter.getBookmarkListFromMap(converter.getBookmarkPages()));
-
-    //    todo: // FIXME: 07.06.2017
-//    databaseDocument.setFolder("folder");
-    //
 
     documentWithTextPagesRepository.save(databaseDocument);
 
