@@ -1,6 +1,7 @@
 package com.borovyksv.controller;
 
 import com.borovyksv.mongo.pojo.ConvertedDocument;
+import com.borovyksv.mongo.pojo.DocumentWithTextPages;
 import com.borovyksv.mongo.pojo.ProgressStatus;
 import com.borovyksv.mongo.repository.ConvertedDocumentRepository;
 import com.borovyksv.mongo.repository.DocumentWithTextPagesRepository;
@@ -8,6 +9,7 @@ import com.borovyksv.mongo.repository.ProgressStatusRepository;
 import com.borovyksv.service.FileService;
 import com.borovyksv.sql.VehicleRepository;
 import com.borovyksv.sql.vehicle.FrontendVehicle;
+import com.borovyksv.sql.vehicle.Info;
 import com.borovyksv.sql.vehicle.Vehicle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -61,40 +63,26 @@ public class MainController {
   }
 
   @RequestMapping(value = "/documents/store", method = RequestMethod.POST, consumes = "multipart/form-data")
-  public void handleFileUpload(@RequestPart("file") MultipartFile file, @RequestPart("info") FrontendVehicle info) {
+  public String handleFileUpload(@RequestPart("file") MultipartFile file, @RequestPart("info") Info info) {
+
+    DocumentWithTextPages doc = new DocumentWithTextPages();
+    doc.setName(file.getOriginalFilename());
+    doc.setVendor(info.getVendor());
+    doc.setType(info.getType());
+    doc.setModel(info.getModel());
+    doc.setYear(info.getYear());
+    doc.setOptions(info.getOptions());
 
 
-//        info = Arrays.asList(new Info("vendor", new String[]{"gms"}),
-//                new Info("model", new String[]{"acura", "denali"}),
-//                new Info("year", new String[]{"2007","2008"}));
+    DocumentWithTextPages saved = documentWithTextPagesRepository.save(doc);
+    System.out.println(saved);
+    String id = saved.getId();
 
-    System.out.println(info);
-    System.out.println(file.getOriginalFilename());
-
-//    Info vendor = info.get(0);
-//    Info model = info.get(1);
-//    Info year = info.get(2);
-//
-//    DocumentWithTextPages doc = new DocumentWithTextPages();
-//    doc.setName("Filename");
-//    doc.setVendor(vendor.getOptions()[0]);
-//    doc.setModel(Arrays.asList(model.getOptions()));
-//
-//    List<Integer> years = new ArrayList<>();
-//    for (String y : year.getOptions()) {
-//      years.add(Integer.valueOf(y));
-//    }
-//    doc.setYear(years);
-//    doc.setOptions(Collections.emptyList());
-//
-//
-//    DocumentWithTextPages saved = documentWithTextPagesRepository.save(doc);
-//    String id = saved.getId();
-//
-//    String result = " error";
-//    if (fileService.store(file, id)) {
-//      result = " uploaded";
-//    }
+    String result = "upload error";
+    if (fileService.store(file, id)) {
+      result = file.getOriginalFilename()+" upload successful";
+    }
+    return "{\"status\":\"" +result+"\"}";
 
   }
 

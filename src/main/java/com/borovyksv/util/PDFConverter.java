@@ -137,7 +137,7 @@ public class PDFConverter implements Observable{
     LOGGER.log(Level.INFO, String.format("%s is %s pdf", pdfFileName, isScanned ? "scanned" : "text format"));
 
     if (isScanned) {
-      saveImagesAndText(true);
+      saveImagesAndText(false);
     } else {
       saveImages();
       saveText();
@@ -256,6 +256,8 @@ public class PDFConverter implements Observable{
 
       ArrayList<Thread> threads = new ArrayList<>(N_THREADS);
 
+      ConvertThread.setCurrentPage(0);
+
       IntStream.range(0, N_THREADS).parallel().forEach((i) -> threads.add(
         new ConvertThread(this, pdfFile, saveText)
       ));
@@ -282,6 +284,8 @@ public class PDFConverter implements Observable{
       LOGGER.log(Level.INFO, e.getMessage());
     }
   }
+
+  // save to file.txt method:
 
 //    private void saveTextToFile(int pageNumber, BufferedImage bufferedImage) {
 //        Tesseract tessInst = new Tesseract();

@@ -13,30 +13,86 @@ import 'rxjs/add/operator/toPromise';
   providers: [DocumentService]
 })
 export class AppComponent implements OnInit {
-  documents: Document[];
-  converted: Converted[];
 
   // Form
-  vehicles: Vehicle[];
+  options = '';
+  years = [2018];
+  selectedYear:number;
 
-  selectedVehicle:Vehicle=new Vehicle("",[""]);
-
-
-  submitted = false;
-
-  onSubmit() { this.submitted = true; }
-
-  changeSelectedVehicle(value:string) {
-      for (let i in this.vehicles) {
-        if (this.vehicles[i].vendor == value) {
-          this.selectedVehicle = this.vehicles[i];
-          break;
-        }
-      }
+  changeSelectedYear(value:number) {
+    this.selectedYear = value;
   }
 
-  get diagnostic() { return JSON.stringify(this.selectedVehicle); }
-  // end Form
+  types = ['owner manual',
+    'repair',
+    'miscellaneous'];
+  selectedType = '';
+
+  changeSelectedType(value:string) {
+    this.selectedType = value;
+  }
+
+
+  // autocomplete
+  // - vehicle
+  vehicleQuery = '';
+  vehicleFilteredList = [];
+  vehicles:Vehicle[];
+
+
+  filterVehicles() {
+    if (this.vehicleQuery !== "") {
+      this.vehicleFilteredList = this.vehicles.filter(function (el) {
+        return el.vendor.toLowerCase().indexOf(this.vehicleQuery.toLowerCase()) > -1;
+      }.bind(this));
+    } else {
+      this.vehicleFilteredList = [];
+    }
+  }
+
+  selectVehicle(item) {
+    this.vehicleQuery = item;
+    this.vehicleFilteredList = [];
+    this.changeSelectedVehicle(item);
+  }
+
+  // - model
+  modelQuery = '';
+  modelFilteredList = [];
+  selectedVehicle:Vehicle = new Vehicle("", [""]);
+  models = [];
+
+
+  filterModels() {
+    if (this.modelQuery !== "") {
+      this.modelFilteredList = this.models.filter(function (el) {
+        return el.toLowerCase().indexOf(this.modelQuery.toLowerCase()) > -1;
+      }.bind(this));
+    } else {
+      this.modelFilteredList = [];
+    }
+  }
+
+  selectModel(item) {
+    this.modelQuery = item;
+    this.modelFilteredList = [];
+  }
+
+  changeSelectedVehicle(value:string) {
+    for (let i in this.vehicles) {
+      if (this.vehicles[i].vendor == value) {
+        this.selectedVehicle = this.vehicles[i];
+        this.models = this.vehicles[i].models;
+        break;
+      }
+    }
+  }
+
+
+  // end autocomplete
+
+  documents:Document[];
+  converted:Converted[];
 
   // upload a file
   fileList:FileList;
@@ -44,14 +100,26 @@ export class AppComponent implements OnInit {
   fileChange(event) {
     this.fileList = event.target.files;
   }
+
+  // get diagnostic() { return JSON.stringify(this.fileList); }
+
   uploadPdf() {
     console.log("upload PDF")
     if (this.fileList.length > 0) {
       let file:File = this.fileList[0];
       let formData:FormData = new FormData();
+      let info:Form = new Form(
+        this.vehicleQuery,
+        [this.modelQuery],
+        [this.selectedYear],
+        this.selectedType,
+        [this.options]);
+
+      // todo:remove
+      console.log(info);
 
       formData.append('file', file, file.name);
-      formData.append('info', new Blob([JSON.stringify(this.selectedVehicle)],
+      formData.append('info', new Blob([JSON.stringify(info)],
         {
           type: "application/json"
         }));
@@ -64,12 +132,15 @@ export class AppComponent implements OnInit {
         .then(res => console.log(res.json()))
         .catch(error => console.log(error));
     }
+    this.vehicleQuery = '';
+    this.modelQuery = '';
+    this.selectedYear = null;
+    this.selectedType = '';
+    this.options = '';
+    this.fileList = null;
   }
 
   // end upload a file
-
-
-
 
 
   constructor(private http:Http, private documentService:DocumentService) {
@@ -84,13 +155,37 @@ export class AppComponent implements OnInit {
 
     })
   }
+
   ngOnInit():void {
     this.documentService.getVehicles().then(vehicles => {
       this.vehicles = vehicles;
       this.selectedVehicle = vehicles[0];
     });
+    this.initYears();
   }
 
+  initYears():void {
+    for (let i = this.years[0] - 1; i >= 1800; i--) {
+      this.years.push(i);
+    }
+  }
+
+}
+
+export class Form {
+  vendor:string;
+  model:string[];
+  year:number[];
+  type:string;
+  options:string[];
+
+  constructor(vendor:string, model:string[], year:number[], type:string, options:string[]) {
+    this.vendor = vendor;
+    this.model = model;
+    this.year = year;
+    this.type = type;
+    this.options = options;
+  }
 }
 
 export class Vehicle {
@@ -103,17 +198,17 @@ export class Vehicle {
   }
 }
 
-export class Document{
-  docName: string;
-  id: number;
-  imagesProgress: number;
-  pagesProgress: number;
-  textProgress: number;
-  errors: Array<string>;
+export class Document {
+  docName:string;
+  id:number;
+  imagesProgress:number;
+  pagesProgress:number;
+  textProgress:number;
+  errors:Array<string>;
 }
 
-export class Converted{
-  id: string;
-  name: string;
-  numberOfPages: number
+export class Converted {
+  id:string;
+  name:string;
+  numberOfPages:number
 }

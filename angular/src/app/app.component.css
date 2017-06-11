@@ -11,3 +11,15 @@ div.progress span {
   width: 100%;
   color: black;
 }
+
+.selectors {
+  margin-top: 3em;
+}
+
+.upload-btn {
+  text-align: center;
+  margin-top: 1em;
+}
+.file-input{
+  margin-top: 1em;
+}

@@ -49,8 +49,11 @@ public class PDFProcessor implements Processor {
 //    exchange.getOut().setHeader(Exchange.FILE_NAME, fileName);
 //    exchange.getOut().setBody(converter.getResultFolder());
 
+    databaseDocument.setPages(DocumentAdapter.getPageListFromMap(converter.getTextPages()));
+    databaseDocument.setBookmarks(DocumentAdapter.getBookmarkListFromMap(converter.getBookmarkPages()));
+    exchange.getOut().setBody(databaseDocument);
 
-    updateDocumentInDB(databaseDocument, converter);
+//    updateDocumentInDB(databaseDocument, converter);
 
   }
 
@@ -74,15 +77,14 @@ public class PDFProcessor implements Processor {
 
   }
 
-  private void updateDocumentInDB(DocumentWithTextPages databaseDocument, PDFConverter converter) {
-
-
-    databaseDocument.setPages(DocumentAdapter.getPageListFromMap(converter.getTextPages()));
-    databaseDocument.setBookmarks(DocumentAdapter.getBookmarkListFromMap(converter.getBookmarkPages()));
-
-    documentWithTextPagesRepository.save(databaseDocument);
-
-  }
+//  private void updateDocumentInDB(DocumentWithTextPages databaseDocument, PDFConverter converter) {
+//
+//
+//
+//
+//    documentWithTextPagesRepository.save(databaseDocument);
+//
+//  }
 
 
 }

@@ -8,7 +8,7 @@
     </div>
     <div class="collapse navbar-collapse" id="navcol-1">
       <ul class="nav navbar-nav navbar-right">
-        <li role="presentation"><a href="#">Item</a></li>
+        <!--<li role="presentation"><a href="#">Item</a></li>-->
       </ul>
     </div>
   </div>
@@ -16,34 +16,80 @@
 
 
 <div class="container">
-  {{diagnostic}}
-  <h1>Hero Form</h1>
-  <form (ngSubmit)="uploadPdf()" class="bootstrap-form-with-validation">
-    <div class="form-group">
-      <label>Vendor</label>
-      <select class="form-control" (change)="changeSelectedVehicle($event.target.value)">
-        <option *ngFor="let vehicle of vehicles" [value]="vehicle.vendor">{{vehicle.vendor}}</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Model</label>
-      <select class="form-control" id="model" required>
-        <option *ngFor="let model of selectedVehicle.models" [value]="model">{{model}}</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="name">Name</label>
-      <input type="text" class="form-control" id="name" required>
-    </div>
-    <div class="form-group">
-      <label class="control-label" for="file-input">File Input</label>
-      <input type="file" name="file-input" id="file-input"
-             (change)="fileChange($event)" placeholder="Upload file" accept=".pdf">
+  <h5>Upload PDF</h5>
+  <form (ngSubmit)="uploadPdf()" class="bootstrap-form-wsith-validation">
+    <div class="col-md-4">
+      <div class="form-group">
+        <div class="input-field col s12">
+          <input id="Vendor" type="text" name="Vendor" class="validate filter-input " [(ngModel)]=vehicleQuery
+                 (keyup)=filterVehicles()>
+          <label for="Vendor">Vendor</label>
+        </div>
+        <div class="suggestions" *ngIf="vehicleFilteredList.length > 0">
+          <ul *ngFor="let item of vehicleFilteredList">
+            <li>
+              <a (click)="selectVehicle(item.vendor)">{{item.vendor}}</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="input-field col s12">
+          <input id="Model" type="text" name="Model" class="validate filter-input " [(ngModel)]=modelQuery
+                 (keyup)=filterModels()>
+          <label for="Model">Model</label>
+        </div>
+        <div class="suggestions" *ngIf="modelFilteredList.length > 0">
+          <ul *ngFor="let item of modelFilteredList">
+            <li>
+              <a (click)="selectModel(item)">{{item}}</a>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
 
-    <div class="form-group">
-      <button class="btn btn-primary" type="submit">Upload</button>
+    <div class="col-md-4 selectors">
+
+      <select class="form-control input-field col s12" id="years" (change)="changeSelectedYear($event.target.value)"
+              required>
+        <option value="" disabled selected>Year</option>
+        <option *ngFor="let year of years" [value]="year">{{year}}</option>
+      </select>
+      <select class="form-control input-field col s12" id="types" (change)="changeSelectedType($event.target.value)"
+              required>
+        <option value="" disabled selected>Document type</option>
+        <option *ngFor="let type of types" [value]="type">{{type}}</option>
+      </select>
     </div>
+
+    <div class="form-group col-md-4">
+      <div class="input-field col s12">
+        <input id="Options" type="text" name="Options" class="validate filter-input " [(ngModel)]=options>
+        <label for="Options">option 1, option 2, option 3</label>
+      </div>
+      <div class="form-group file-input">
+        <label class="control-label" for="file-input">File Input</label>
+        <input type="file" name="file-input" id="file-input"
+               (change)="fileChange($event)" placeholder="Upload file" accept=".pdf">
+      </div>
+      <!--vehicleQuery=-->
+      <!--{{ vehicleQuery}}-->
+      <!--modelQuery=-->
+      <!--{{ modelQuery}}-->
+      <!--selectedYear=-->
+      <!--{{ selectedYear}}-->
+      <!--selectedType=-->
+      <!--{{ selectedType}}-->
+      <!--options=-->
+      <!--{{ options}}-->
+      <div class="form-group upload-btn">
+        <button class="btn btn-primary" type="submit"
+                [disabled]="vehicleQuery==''||modelQuery==''||selectedType==''||fileList==null">
+          Upload</button>
+      </div>
+    </div>
+
   </form>
 </div>
 
@@ -109,9 +155,11 @@
                 </div>
                 <div class="row">
                   <div class="col-md-12">
-                    <div ng-show="document.errors!=null"><a class="btn btn-danger btn-block btn-xs collapsed" data-toggle="collapse"
-                            aria-expanded="false" aria-controls="collapse-1" role="button"
-                            href="#collapse-1">Errors </a>
+                    <div ng-show="document.errors!=null"><a class="btn btn-danger btn-block btn-xs collapsed"
+                                                            data-toggle="collapse"
+                                                            aria-expanded="false" aria-controls="collapse-1"
+                                                            role="button"
+                                                            href="#collapse-1">Errors </a>
                       <div class="collapse" id="collapse-1" aria-expanded="false" style="height: 0px;">
                         <p>{{document.errors}}</p>
                       </div>
