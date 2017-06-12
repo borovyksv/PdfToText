@@ -61,6 +61,7 @@ class ConvertThread extends Thread {
             run();
         } catch (IOException e) {
             LOGGER.log(Level.INFO, e.getMessage());
+            converter.getErrors().add(e.getMessage());
         }
 
     }

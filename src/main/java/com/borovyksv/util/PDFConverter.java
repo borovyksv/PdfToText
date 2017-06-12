@@ -569,4 +569,6 @@ public class PDFConverter implements Observable{
   public int getPagesProgress() {return pagesProgress;}
 
   public int getImagesProgress() {return imagesProgress;}
+
+
 }
